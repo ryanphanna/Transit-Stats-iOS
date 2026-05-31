@@ -1,0 +1,257 @@
+import Foundation
+import FirebaseAuth
+import FirebaseFirestore
+import SwiftData
+import Combine
+
+/// Network client to communicate with the Transit Stats custom HTTP API endpoint.
+@MainActor
+class TransitStatsAPI: ObservableObject {
+    static let shared = TransitStatsAPI()
+    
+    private let baseURL = URL(string: "https://us-central1-transitstats-21ba4.cloudfunctions.net/api")!
+    
+    @Published var isSendingCommand = false
+    @Published var lastReplies: [String] = []
+    @Published var lastError: String? = nil
+    
+    /// Requests a login OTP code for the given phone number.
+    func requestOtp(phoneNumber: String) async throws {
+        var request = URLRequest(url: baseURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "action": "request_otp",
+            "phoneNumber": phoneNumber
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "TransitStatsAPI", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
+        }
+        
+        if httpResponse.statusCode != 200 {
+            if let errorObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorMsg = errorObj["error"] as? String {
+                throw NSError(domain: "TransitStatsAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMsg])
+            }
+            throw NSError(domain: "TransitStatsAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Failed to send code (\(httpResponse.statusCode))"])
+        }
+    }
+    
+    /// Verifies the OTP code and returns the Firebase Custom Token.
+    func verifyOtp(phoneNumber: String, code: String) async throws -> String {
+        var request = URLRequest(url: baseURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "action": "verify_otp",
+            "phoneNumber": phoneNumber,
+            "code": code
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NSError(domain: "TransitStatsAPI", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
+        }
+        
+        if httpResponse.statusCode != 200 {
+            if let errorObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorMsg = errorObj["error"] as? String {
+                throw NSError(domain: "TransitStatsAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMsg])
+            }
+            throw NSError(domain: "TransitStatsAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Verification failed (\(httpResponse.statusCode))"])
+        }
+        
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = json["token"] as? String else {
+            throw NSError(domain: "TransitStatsAPI", code: 500, userInfo: [NSLocalizedDescriptionKey: "Response missing token"])
+        }
+        
+        return token
+    }
+    
+    private func getIdToken() async throws -> String {
+        guard let currentUser = Auth.auth().currentUser else {
+            throw NSError(domain: "TransitStatsAPI", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+        }
+        return try await currentUser.getIDToken()
+    }
+    
+    /// Sends a text command to the Transit Stats backend, replicating the Twilio SMS flow.
+    @discardableResult
+    func sendCommand(_ command: String) async -> [String] {
+        self.isSendingCommand = true
+        self.lastError = nil
+        
+        defer {
+            self.isSendingCommand = false
+        }
+        
+        do {
+            let token = try await getIdToken()
+            
+            var request = URLRequest(url: baseURL)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            
+            let body: [String: Any] = ["command": command]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw NSError(domain: "TransitStatsAPI", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
+            }
+            
+            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                throw NSError(domain: "TransitStatsAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Access denied. Whitelist verification failed."])
+            }
+            
+            if httpResponse.statusCode != 200 {
+                if let errorObj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let errorMsg = errorObj["error"] as? String {
+                    throw NSError(domain: "TransitStatsAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMsg])
+                }
+                throw NSError(domain: "TransitStatsAPI", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: "Server returned error \(httpResponse.statusCode)"])
+            }
+            
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let replies = json["replies"] as? [String] else {
+                return ["Trip logged successfully."]
+            }
+            
+            self.lastReplies = replies
+            return replies
+            
+        } catch {
+            let errorMsg = error.localizedDescription
+            self.lastError = errorMsg
+            return ["Error: \(errorMsg)"]
+        }
+    }
+}
+
+/// Synchronization manager that listens to Firestore updates and mirrors them to local SwiftData context.
+@MainActor
+class SyncManager: ObservableObject {
+    static let shared = SyncManager()
+    
+    private var listener: ListenerRegistration?
+    
+    /// Listens to the user's trips in Firestore and synchronizes with local SwiftData
+    func startSyncing(modelContext: ModelContext, userId: String) {
+        stopSyncing()
+        
+        let db = Firestore.firestore()
+        listener = db.collection("trips")
+            .whereField("userId", isEqualTo: userId)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let snapshot = snapshot else {
+                    print("Error listening to Firestore trips: \(error?.localizedDescription ?? "unknown")")
+                    return
+                }
+                
+                Task { @MainActor in
+                    self?.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
+                }
+            }
+    }
+    
+    /// Detaches the snapshot listener
+    func stopSyncing() {
+        listener?.remove()
+        listener = nil
+    }
+    
+    private func syncTrips(_ changes: [DocumentChange], in context: ModelContext, userId: String) {
+        for change in changes {
+            let doc = change.document
+            let id = doc.documentID
+            let data = doc.data()
+            
+            switch change.type {
+            case .added, .modified:
+                let route = data["route"] as? String ?? ""
+                let direction = data["direction"] as? String ?? ""
+                let agency = data["agency"] as? String ?? "TTC"
+                
+                let startTime = (data["startTime"] as? Timestamp)?.dateValue() ?? Date()
+                let endTime = (data["endTime"] as? Timestamp)?.dateValue()
+                
+                let startStopCode = data["startStopCode"] as? String
+                let startStopName = data["startStopName"] as? String
+                let endStopCode = data["endStopCode"] as? String
+                let endStopName = data["endStopName"] as? String
+                
+                let notes = data["notes"] as? String
+                let vehicle = data["vehicle"] as? String
+                let source = data["source"] as? String ?? "ios"
+                let isPublic = data["isPublic"] as? Bool ?? false
+                let timezone = data["timezone"] as? String ?? "America/Toronto"
+                
+                // Fetch existing SwiftData record
+                let descriptor = FetchDescriptor<TripRecord>(predicate: #Predicate { $0.id == id })
+                let existing = try? context.fetch(descriptor).first
+                
+                if let record = existing {
+                    record.route = route
+                    record.direction = direction
+                    record.agency = agency
+                    record.startTime = startTime
+                    record.endTime = endTime
+                    record.startStopCode = startStopCode
+                    record.startStopName = startStopName
+                    record.endStopCode = endStopCode
+                    record.endStopName = endStopName
+                    record.notes = notes
+                    record.vehicle = vehicle
+                    record.source = source
+                    record.isPublic = isPublic
+                    record.timezone = timezone
+                    record.isSynced = true
+                } else {
+                    let record = TripRecord(
+                        id: id,
+                        route: route,
+                        direction: direction,
+                        agency: agency,
+                        startTime: startTime,
+                        endTime: endTime,
+                        startStopCode: startStopCode,
+                        startStopName: startStopName,
+                        endStopCode: endStopCode,
+                        endStopName: endStopName,
+                        notes: notes,
+                        vehicle: vehicle,
+                        source: source,
+                        isPublic: isPublic,
+                        timezone: timezone,
+                        userId: userId,
+                        isSynced: true
+                    )
+                    context.insert(record)
+                }
+                
+            case .removed:
+                let descriptor = FetchDescriptor<TripRecord>(predicate: #Predicate { $0.id == id })
+                if let existing = try? context.fetch(descriptor).first {
+                    context.delete(existing)
+                }
+            }
+        }
+        
+        do {
+            try context.save()
+        } catch {
+            print("Failed to save synced SwiftData context: \(error.localizedDescription)")
+        }
+    }
+}
