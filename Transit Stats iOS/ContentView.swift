@@ -239,7 +239,7 @@ struct MainTabView: View {
         TabView {
             HomeView()
                 .tabItem {
-                    Label("Dashboard", systemImage: "square.grid.2x2.fill")
+                    Label("Home", systemImage: "map.fill")
                 }
             
             TripsHistoryView()
@@ -250,11 +250,6 @@ struct MainTabView: View {
             StatsView()
                 .tabItem {
                     Label("Stats", systemImage: "chart.bar.fill")
-                }
-            
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
                 }
         }
         .tint(.blue)
