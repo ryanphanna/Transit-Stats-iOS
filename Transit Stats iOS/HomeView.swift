@@ -416,89 +416,124 @@ struct HomeView: View {
             let shortcuts = getShortcutOptions()
             
             if shortcuts.isEmpty {
-                Text("Your regular routes will appear here once you log a few trips.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray)
-                    .padding(.top, 2)
+            Text("Your regular routes will appear here once you log a few trips.")
+            .font(.system(size: 11))
+            .foregroundColor(.gray)
+            .padding(.top, 2)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(shortcuts, id: \.command) { shortcut in
-                            Button(action: { startShortcut(shortcut.command) }) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(shortcut.route)
-                                        .font(.system(size: 10, weight: .black))
-                                        .foregroundColor(.orange)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 3)
-                                        .background(Color.orange.opacity(0.15))
-                                        .cornerRadius(4)
-                                    
-                                    Text(shortcut.stopName)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-                                    
-                                    if !shortcut.direction.isEmpty {
-                                        Text(shortcut.direction.uppercased())
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .padding(12)
-                                .frame(width: 125, alignment: .leading)
-                                .background(Color.black.opacity(0.25))
-                                .cornerRadius(10)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                )
+            ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(shortcuts, id: \.command) { shortcut in
+                    Button(action: { startShortcut(shortcut) }) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(shortcut.route)
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundColor(.orange)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Color.orange.opacity(0.15))
+                                .cornerRadius(4)
+
+                            Text(shortcut.stopName)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+
+                            if !shortcut.direction.isEmpty {
+                                Text(shortcut.direction.uppercased())
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(.gray)
                             }
                         }
+                        .padding(12)
+                        .frame(width: 125, alignment: .leading)
+                        .background(Color.black.opacity(0.25))
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
                     }
                 }
+            }
+            }
+            }
+            }
+            }
+
+            // MARK: - Actions
+
+            private func updateTimer(for trip: TripRecord) {
+            let diff = Date().timeIntervalSince(trip.startTime)
+            let mins = Int(diff / 60)
+            if mins < 1 {
+            timeElapsed = "0 min"
+            } else {
+            timeElapsed = "\(mins) min"
+            }
+            }
+
+            private func startShortcut(_ shortcut: ShortcutOption) {
+            guard let userId = AuthManager.shared.currentUser?.uid else { return }
+
+            let newTrip = TripRecord(
+            route: shortcut.route,
+            direction: shortcut.direction,
+            agency: "TTC", // Default for shortcuts for now, could be stored in ShortcutOption
+            startTime: Date(),
+            startStopName: shortcut.stopName,
+            userId: userId,
+            isSynced: false
+            )
+
+            modelContext.insert(newTrip)
+            try? modelContext.save()
+            }
+    private func endTrip() {
+        guard let trip = activeTrip else { return }
+        
+        let stop = endStopText.trimmingCharacters(in: .whitespaces)
+        trip.endStopName = stop.isEmpty ? nil : stop
+        trip.endTime = Date()
+        
+        // Save locally first
+        try? modelContext.save()
+        
+        // Clear UI
+        let tripToSync = trip
+        endStopText = ""
+        
+        // Sync to Firestore
+        Task {
+            do {
+                try await api.uploadTrip(tripToSync)
+                try? modelContext.save() // Save the isSynced = true state
+            } catch {
+                print("Failed to sync completed trip: \(error.localizedDescription)")
             }
         }
     }
     
-    // MARK: - Actions
-    
-    private func updateTimer(for trip: TripRecord) {
-        let diff = Date().timeIntervalSince(trip.startTime)
-        let mins = Int(diff / 60)
-        if mins < 1 {
-            timeElapsed = "0 min"
-        } else {
-            timeElapsed = "\(mins) min"
-        }
-    }
-    
-    private func startShortcut(_ command: String) {
-        Task {
-            await api.sendCommand(command)
-        }
-    }
-    
-    private func endTrip() {
-        let stop = endStopText.trimmingCharacters(in: .whitespaces)
-        let command = stop.isEmpty ? "END" : "END \(stop)"
-        
-        Task {
-            await api.sendCommand(command)
-            endStopText = ""
-        }
-    }
-    
     private func forgotTrip() {
+        guard let trip = activeTrip else { return }
+        
+        // Mark as 15 mins ago or just end now if unknown
+        trip.endTime = trip.startTime.addingTimeInterval(15 * 60)
+        trip.notes = (trip.notes ?? "") + " (Flagged as forgotten)"
+        
+        try? modelContext.save()
+        
+        let tripToSync = trip
         Task {
-            await api.sendCommand("FORGOT")
+            try? await api.uploadTrip(tripToSync)
+            try? modelContext.save()
         }
     }
     
     private func discardTrip() {
-        Task {
-            await api.sendCommand("DISCARD")
-        }
+        guard let trip = activeTrip else { return }
+        modelContext.delete(trip)
+        try? modelContext.save()
     }
     
     // Helper to extract top 4 unique shortcuts

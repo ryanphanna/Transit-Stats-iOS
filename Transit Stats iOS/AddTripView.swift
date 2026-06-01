@@ -2,7 +2,8 @@ import SwiftUI
 
 struct AddTripView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var api = TransitStatsAPI.shared
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var authManager = AuthManager.shared
 
     // Step 1: waiting at stop
     @State private var stopText = ""
@@ -334,27 +335,35 @@ struct AddTripView: View {
     private func submitTrip() {
         let route = routeText.trimmingCharacters(in: .whitespaces)
         guard !route.isEmpty else { return }
+        
+        guard let userId = authManager.currentUser?.uid else {
+            print("Error: No user logged in")
+            return
+        }
 
         isLoading = true
 
-        // Build command — route + optional stop + agency (if not TTC)
-        var parts: [String] = [route]
-
         let stop = stopText.trimmingCharacters(in: .whitespaces)
-        if !stop.isEmpty {
-            parts.append(stop)
-        }
-
-        if agency != "TTC" {
-            parts.append(agency)
-        }
-
-        let command = parts.joined(separator: " ")
-
-        Task {
-            await api.sendCommand(command)
+        
+        let newTrip = TripRecord(
+            route: route,
+            direction: direction,
+            agency: agency,
+            startTime: waitingSince ?? Date(),
+            startStopName: stop.isEmpty ? nil : stop,
+            userId: userId,
+            isSynced: false
+        )
+        
+        modelContext.insert(newTrip)
+        
+        do {
+            try modelContext.save()
             isLoading = false
             dismiss()
+        } catch {
+            print("Failed to save local trip: \(error.localizedDescription)")
+            isLoading = false
         }
     }
 }

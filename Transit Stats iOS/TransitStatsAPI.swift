@@ -137,6 +137,34 @@ class TransitStatsAPI: ObservableObject {
             return ["Error: \(errorMsg)"]
         }
     }
+    
+    /// Uploads a completed TripRecord directly to Firestore.
+    func uploadTrip(_ trip: TripRecord) async throws {
+        let db = Firestore.firestore()
+        
+        let data: [String: Any] = [
+            "route": trip.route,
+            "direction": trip.direction,
+            "agency": trip.agency,
+            "startTime": Timestamp(date: trip.startTime),
+            "endTime": trip.endTime != nil ? Timestamp(date: trip.endTime!) : NSNull(),
+            "startStopCode": trip.startStopCode ?? NSNull(),
+            "startStopName": trip.startStopName ?? NSNull(),
+            "endStopCode": trip.endStopCode ?? NSNull(),
+            "endStopName": trip.endStopName ?? NSNull(),
+            "notes": trip.notes ?? NSNull(),
+            "vehicle": trip.vehicle ?? NSNull(),
+            "source": trip.source,
+            "isPublic": trip.isPublic,
+            "timezone": trip.timezone,
+            "userId": trip.userId
+        ]
+        
+        try await db.collection("trips").document(trip.id).setData(data)
+        
+        // Update local record status
+        trip.isSynced = true
+    }
 }
 
 /// Synchronization manager that listens to Firestore updates and mirrors them to local SwiftData context.
@@ -169,6 +197,32 @@ class SyncManager: ObservableObject {
     func stopSyncing() {
         listener?.remove()
         listener = nil
+    }
+    
+    /// Finds local trips that haven't been synced to Firestore and uploads them.
+    func syncPendingTrips(modelContext: ModelContext) {
+        let descriptor = FetchDescriptor<TripRecord>(
+            predicate: #Predicate { $0.isSynced == false && $0.endTime != nil }
+        )
+        
+        do {
+            let pendingTrips = try modelContext.fetch(descriptor)
+            print("Found \(pendingTrips.count) pending trips to sync.")
+            
+            for trip in pendingTrips {
+                Task {
+                    do {
+                        try await TransitStatsAPI.shared.uploadTrip(trip)
+                        try? modelContext.save()
+                        print("Synced pending trip: \(trip.id)")
+                    } catch {
+                        print("Failed to sync pending trip \(trip.id): \(error.localizedDescription)")
+                    }
+                }
+            }
+        } catch {
+            print("Failed to fetch pending trips: \(error.localizedDescription)")
+        }
     }
     
     private func syncTrips(_ changes: [DocumentChange], in context: ModelContext, userId: String) {
