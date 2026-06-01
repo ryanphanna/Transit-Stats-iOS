@@ -42,6 +42,9 @@ struct HomeView: View {
                   let lat = trip.startLatitude,
                   let lon = trip.startLongitude else { continue }
             
+            // Background GPS validation: Skip inaccurate data (> 65m) for map visualization
+            if let accuracy = trip.startAccuracy, accuracy > 65 { continue }
+            
             if var existing = hubs[name] {
                 existing.count += 1
                 hubs[name] = existing
