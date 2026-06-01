@@ -285,6 +285,30 @@ struct AddTripView: View {
                         .onSubmit { if !routeText.isEmpty { submitTrip() } }
                 }
                 
+                // Direction Suggestions for manual route entry
+                if !routeText.isEmpty && direction.isEmpty {
+                    let dirPredictions = PredictionEngine.predict(history: tripHistory, stopName: stopText)
+                        .filter { $0.route == routeText }
+                    
+                    if !dirPredictions.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(dirPredictions, id: \.direction) { pred in
+                                    Button(action: { direction = pred.direction }) {
+                                        Text(pred.direction)
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.white.opacity(0.1))
+                                            .cornerRadius(8)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                }
+                
                 // Route suggestions based on history
                 if !suggestions.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -296,6 +320,11 @@ struct AddTripView: View {
                                     // Also try to match agency if possible, default to TTC
                                     if let match = tripHistory.first(where: { $0.route == pred.route }) {
                                         agency = match.agency
+                                    }
+                                    
+                                    // If we have a predicted direction, prioritize it
+                                    if !pred.direction.isEmpty {
+                                        direction = pred.direction
                                     }
                                 }) {
                                     VStack(alignment: .leading, spacing: 2) {

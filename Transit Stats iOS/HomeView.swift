@@ -90,28 +90,21 @@ struct HomeView: View {
             Map(position: $cameraPosition) {
                 ForEach(mapMarkers) { marker in
                     Annotation(marker.label, coordinate: marker.coordinate) {
-                        ZStack {
-                            Circle()
-                                .fill(marker.isActive ? Color.orange : Color.blue)
-                                .frame(width: 28, height: 28)
-                                .shadow(color: .black.opacity(0.3), radius: 3)
-                            
-                            if marker.isActive {
-                                Image(systemName: "tram.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white)
-                            } else {
-                                Text("\(marker.count)")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                        }
+                        HubView(marker: marker)
                     }
                 }
                 
                 UserAnnotation()
             }
             .mapStyle(.standard(emphasis: .low, pointsOfInterest: .excludingAll))
+            .onAppear {
+                updateCameraPosition()
+            }
+            .onChange(of: mapMarkers.count) {
+                withAnimation(.spring()) {
+                    updateCameraPosition()
+                }
+            }
             .ignoresSafeArea()
             
             VStack {
@@ -657,6 +650,35 @@ struct HomeView: View {
         
         return options
     }
+    
+    private func updateCameraPosition() {
+        guard !mapMarkers.isEmpty else { return }
+        let coordinates = mapMarkers.map { $0.coordinate }
+        
+        var minLat = 90.0
+        var maxLat = -90.0
+        var minLon = 180.0
+        var maxLon = -180.0
+        
+        for coord in coordinates {
+            minLat = min(minLat, coord.latitude)
+            maxLat = max(maxLat, coord.latitude)
+            minLon = min(minLon, coord.longitude)
+            maxLon = max(maxLon, coord.longitude)
+        }
+        
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2
+        )
+        
+        let span = MKCoordinateSpan(
+            latitudeDelta: (maxLat - minLat) * 1.5 + 0.01,
+            longitudeDelta: (maxLon - minLon) * 1.5 + 0.01
+        )
+        
+        cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
+    }
 }
 
 // MARK: - Map Support Types
@@ -668,4 +690,52 @@ struct TripMarker: Identifiable {
     let label: String
     let route: String
     var isActive: Bool = false
+}
+
+// MARK: - Map Support Views
+
+struct HubView: View {
+    let marker: TripMarker
+    @State private var isAnimating = false
+    
+    var body: some View {
+        ZStack {
+            // Pulsing glow for active trips
+            if marker.isActive {
+                Circle()
+                    .stroke(Color.orange.opacity(0.5), lineWidth: 4)
+                    .frame(width: 32, height: 32)
+                    .scaleEffect(isAnimating ? 1.5 : 1.0)
+                    .opacity(isAnimating ? 0 : 1)
+                    .onAppear {
+                        withAnimation(.easeOut(duration: 1.5).repeatForever(autoreverses: false)) {
+                            isAnimating = true
+                        }
+                    }
+            }
+            
+            Circle()
+                .fill(marker.isActive ? Color.orange : Color.blue)
+                .frame(width: 28, height: 28)
+                .shadow(color: .black.opacity(0.3), radius: 3)
+            
+            if marker.isActive {
+                Image(systemName: "tram.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white)
+            } else {
+                Text("\(marker.count)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+            }
+        }
+        .scaleEffect(scaleForCount(marker.count))
+        .transition(.scale.combined(with: .opacity))
+    }
+    
+    private func scaleForCount(_ count: Int) -> CGFloat {
+        if marker.isActive { return 1.1 }
+        // Scale hubs slightly based on frequency (1x to 1.5x)
+        return min(1.0 + CGFloat(count - 1) * 0.05, 1.5)
+    }
 }
