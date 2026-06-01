@@ -30,6 +30,45 @@ struct HomeView: View {
     @State private var isShowingAddTripSheet = false
     @State private var isShowingSettingsSheet = false
     
+    // Map State
+    @State private var cameraPosition: MapCameraPosition = .automatic
+    
+    private var mapMarkers: [TripMarker] {
+        var markers: [TripMarker] = []
+        
+        // Add markers for completed trips
+        for trip in completedTrips.prefix(20) {
+            if let lat = trip.startLatitude, let lon = trip.startLongitude {
+                markers.append(TripMarker(
+                    id: "\(trip.id)-start",
+                    coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                    type: .start,
+                    route: trip.route
+                ))
+            }
+            if let lat = trip.endLatitude, let lon = trip.endLongitude {
+                markers.append(TripMarker(
+                    id: "\(trip.id)-end",
+                    coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                    type: .end,
+                    route: trip.route
+                ))
+            }
+        }
+        
+        // Add marker for active trip
+        if let trip = activeTrip, let lat = trip.startLatitude, let lon = trip.startLongitude {
+            markers.append(TripMarker(
+                id: "\(trip.id)-active",
+                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                type: .active,
+                route: trip.route
+            ))
+        }
+        
+        return markers
+    }
+    
     // Live timer trigger
     @State private var timeElapsed = ""
     let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
@@ -41,10 +80,15 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             // Full Screen Interactive Map Background
-            Map(initialPosition: .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 43.6532, longitude: -79.3832),
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-            )))
+            Map(position: $cameraPosition) {
+                ForEach(mapMarkers) { marker in
+                    Marker(marker.route, systemImage: marker.icon, coordinate: marker.coordinate)
+                        .tint(marker.color)
+                }
+                
+                UserAnnotation()
+            }
+            .mapStyle(.standard(emphasis: .low, pointsOfInterest: .excludingAll))
             .ignoresSafeArea()
             
             VStack {
@@ -589,5 +633,34 @@ struct HomeView: View {
         }
         
         return options
+    }
+}
+
+// MARK: - Map Support Types
+
+struct TripMarker: Identifiable {
+    let id: String
+    let coordinate: CLLocationCoordinate2D
+    let type: MarkerType
+    let route: String
+    
+    enum MarkerType {
+        case start, end, active
+    }
+    
+    var color: Color {
+        switch type {
+        case .start: return .blue
+        case .end: return .red
+        case .active: return .orange
+        }
+    }
+    
+    var icon: String {
+        switch type {
+        case .start: return "arrow.up.circle.fill"
+        case .end: return "arrow.down.circle.fill"
+        case .active: return "tram.fill"
+        }
     }
 }
