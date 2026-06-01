@@ -178,13 +178,27 @@ class SyncManager: ObservableObject {
     
     private var listener: ListenerRegistration?
     
+    private let lastSyncKey = "lastTripsSyncTimestamp"
+    
     /// Listens to the user's trips in Firestore and synchronizes with local SwiftData
     func startSyncing(modelContext: ModelContext, userId: String) {
         stopSyncing()
         
         let db = Firestore.firestore()
+        let lastSync = UserDefaults.standard.double(forKey: lastSyncKey)
+        
+        // 1. If this is a first-time sync (Power User Hydration)
+        if lastSync == 0 {
+            performInitialHydration(modelContext: modelContext, userId: userId)
+        }
+        
+        // 2. Setup real-time listener for delta changes
+        // We use a slightly overlapping timestamp to ensure no gaps
+        let syncThreshold = lastSync > 0 ? Date(timeIntervalSince1970: lastSync - 60) : Date(timeIntervalSince1970: 0)
+        
         listener = db.collection("trips")
             .whereField("userId", isEqualTo: userId)
+            .whereField("startTime", isGreaterThan: Timestamp(date: syncThreshold))
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let snapshot = snapshot else {
                     print("Error listening to Firestore trips: \(error?.localizedDescription ?? "unknown")")
@@ -193,6 +207,45 @@ class SyncManager: ObservableObject {
                 
                 Task { @MainActor in
                     self?.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
+                    // Update sync timestamp to now
+                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: self?.lastSyncKey ?? "")
+                }
+            }
+    }
+    
+    /// Pulls the most recent 50 trips immediately, then fetches everything else.
+    private func performInitialHydration(modelContext: ModelContext, userId: String) {
+        let db = Firestore.firestore()
+        
+        // Fetch last 50 for instant UI population
+        db.collection("trips")
+            .whereField("userId", isEqualTo: userId)
+            .orderBy("startTime", descending: true)
+            .limit(to: 50)
+            .getDocuments { [weak self] snapshot, error in
+                guard let snapshot = snapshot else { return }
+                Task { @MainActor in
+                    self?.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
+                    print("Initial hydration (recent 50) complete.")
+                    
+                    // Now fetch the rest in the background
+                    self?.fetchFullHistory(modelContext: modelContext, userId: userId)
+                }
+            }
+    }
+    
+    private func fetchFullHistory(modelContext: ModelContext, userId: String) {
+        let db = Firestore.firestore()
+        
+        // Fetch everything else
+        db.collection("trips")
+            .whereField("userId", isEqualTo: userId)
+            .getDocuments { [weak self] snapshot, error in
+                guard let snapshot = snapshot else { return }
+                Task { @MainActor in
+                    self?.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
+                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: self?.lastSyncKey ?? "")
+                    print("Full history sync complete.")
                 }
             }
     }
@@ -232,9 +285,15 @@ class SyncManager: ObservableObject {
     /// Syncs the normalized stops library from Firestore to local SwiftData.
     func syncStops(modelContext: ModelContext) {
         let db = Firestore.firestore()
+        let lastStopSyncKey = "lastStopsSyncTimestamp"
+        let lastSync = UserDefaults.standard.double(forKey: lastStopSyncKey)
         
-        // In a real app, we might filter by agency or location, 
-        // but for personal use we'll just grab the library.
+        // If we synced within the last 24 hours, skip to save data/battery
+        if lastSync > 0 && (Date().timeIntervalSince1970 - lastSync) < 86400 {
+            print("Stops library is up to date (synced < 24h ago).")
+            return
+        }
+        
         db.collection("stops").getDocuments { snapshot, error in
             guard let documents = snapshot?.documents else {
                 print("Error fetching stops: \(error?.localizedDescription ?? "unknown")")
@@ -268,6 +327,7 @@ class SyncManager: ObservableObject {
                     }
                 }
                 try? modelContext.save()
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastStopSyncKey)
                 print("Synced \(documents.count) stops to local library.")
             }
         }
