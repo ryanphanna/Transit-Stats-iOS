@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Transit Card Profile**: Implemented a premium "Transit Card" feature, inspired by Flighty's Passport. The profile now features a holographic digital card summarizing the user's transit career, including unique stats, top route badges, and dynamic rank titles (e.g., "System Master").
 - **On-Device OCR "Scan to Start"**: Integrated the Vision framework to allow users to scan bus poles, stop signs, or vehicle numbers via the camera. The app automatically extracts route numbers and stop names, pre-filling the logger for a high-speed, zero-typing entry experience.
 - **Strictly Normalized Hub Model**: Refactored the app to follow a strictly normalized data architecture. Trips now link exclusively to Stops (via names/codes), and Hub resolution is performed dynamically via the local Stops library. Removed denormalized `startHubId` and `endHubId` fields from the trip model.
 - **Hub-Based Stop Suggestions**: Refactored the `AddTripView` logger to group individual boarding platforms into consolidated "Hubs." Users now see a single, verified chip for an intersection (e.g., Spadina / Dundas) instead of multiple scattered suggestions, significantly reducing UI clutter.

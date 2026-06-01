@@ -117,6 +117,16 @@ struct HomeView: View {
                     
                     // Glassmorphic / Liquid Glass Control Bar
                     HStack(spacing: 16) {
+                        Button(action: { isShowingProfileSheet = true }) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        
+                        Divider()
+                            .frame(height: 20)
+                            .background(Color.white.opacity(0.2))
+                        
                         Button(action: { isShowingAddTripSheet = true }) {
                             Image(systemName: "plus")
                                 .font(.system(size: 18, weight: .bold))
@@ -203,10 +213,14 @@ struct HomeView: View {
         }
         .sheet(isPresented: $isShowingAddTripSheet) {
             AddTripView()
-        }
         .sheet(isPresented: $isShowingSettingsSheet) {
             SettingsView()
         }
+        .sheet(isPresented: $isShowingProfileSheet) {
+            ProfileView()
+        }
+        }
+
         .alert("API Error", isPresented: Binding(
             get: { api.lastError != nil },
             set: { if !$0 { api.lastError = nil } }
