@@ -44,6 +44,8 @@ final class TripRecord {
         endLongitude: Double? = nil,
         startAccuracy: Double? = nil,
         endAccuracy: Double? = nil,
+        startHubId: String? = nil,
+        endHubId: String? = nil,
         notes: String? = nil,
         vehicle: String? = nil,
         source: String = "ios",
@@ -68,6 +70,8 @@ final class TripRecord {
         self.endLongitude = endLongitude
         self.startAccuracy = startAccuracy
         self.endAccuracy = endAccuracy
+        self.startHubId = startHubId
+        self.endHubId = endHubId
         self.notes = notes
         self.vehicle = vehicle
         self.source = source

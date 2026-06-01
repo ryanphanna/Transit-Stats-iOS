@@ -158,6 +158,8 @@ class TransitStatsAPI: ObservableObject {
             "endLongitude": trip.endLongitude ?? NSNull(),
             "startAccuracy": trip.startAccuracy ?? NSNull(),
             "endAccuracy": trip.endAccuracy ?? NSNull(),
+            "startHubId": trip.startHubId ?? NSNull(),
+            "endHubId": trip.endHubId ?? NSNull(),
             "notes": trip.notes ?? NSNull(),
             "vehicle": trip.vehicle ?? NSNull(),
             "source": trip.source,
@@ -371,6 +373,9 @@ class SyncManager: ObservableObject {
                 let startAccuracy = data["startAccuracy"] as? Double
                 let endAccuracy = data["endAccuracy"] as? Double
                 
+                let startHubId = data["startHubId"] as? String
+                let endHubId = data["endHubId"] as? String
+                
                 let notes = data["notes"] as? String
                 let vehicle = data["vehicle"] as? String
                 let source = data["source"] as? String ?? "ios"
@@ -421,6 +426,8 @@ class SyncManager: ObservableObject {
                         endLongitude: endLongitude,
                         startAccuracy: startAccuracy,
                         endAccuracy: endAccuracy,
+                        startHubId: startHubId,
+                        endHubId: endHubId,
                         notes: notes,
                         vehicle: vehicle,
                         source: source,
@@ -446,4 +453,6 @@ class SyncManager: ObservableObject {
             print("Failed to save synced SwiftData context: \(error.localizedDescription)")
         }
     }
+}
+  }
 }

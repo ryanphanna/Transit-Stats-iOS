@@ -168,6 +168,7 @@ struct AddTripView: View {
                             ForEach(nearbyHubs.prefix(5)) { hub in
                                 Button(action: {
                                     stopText = hub.name
+                                    selectedHubId = hub.id
                                     advanceToBoard()
                                 }) {
                                     HStack(spacing: 6) {
@@ -486,6 +487,15 @@ struct AddTripView: View {
 
         let stop = stopText.trimmingCharacters(in: .whitespaces)
         
+        // Try to resolve hubId if not already set (e.g. from manual entry)
+        var hubId = selectedHubId
+        if hubId == nil && !stop.isEmpty {
+            hubId = stops.first(where: { 
+                $0.name.lowercased() == stop.lowercased() || 
+                ($0.code != nil && $0.code == stop) 
+            })?.hubId
+        }
+        
         let location = locationManager.lastLocation
         let useLocation = locationManager.isAccuracySufficient
         
@@ -498,6 +508,7 @@ struct AddTripView: View {
             startLatitude: useLocation ? location?.coordinate.latitude : nil,
             startLongitude: useLocation ? location?.coordinate.longitude : nil,
             startAccuracy: useLocation ? location?.horizontalAccuracy : nil,
+            startHubId: hubId,
             userId: userId,
             isSynced: false
         )
