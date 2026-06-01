@@ -21,6 +21,8 @@ struct HomeView: View {
     @Query(sort: \TripRecord.startTime, order: .reverse)
     private var completedTrips: [TripRecord]
     
+    @Query private var hubsLibrary: [Hub]
+    
     @StateObject private var api = TransitStatsAPI.shared
     @StateObject private var locationManager = LocationManager.shared
     
@@ -762,6 +764,10 @@ struct HubView: View {
     private func scaleForCount(_ count: Int) -> CGFloat {
         if marker.isActive { return 1.1 }
         // Scale hubs slightly based on frequency (1x to 1.5x)
+        return min(1.0 + CGFloat(count - 1) * 0.05, 1.5)
+    }
+}
+cale hubs slightly based on frequency (1x to 1.5x)
         return min(1.0 + CGFloat(count - 1) * 0.05, 1.5)
     }
 }

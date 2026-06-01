@@ -28,6 +28,6 @@ struct Transit_Stats_iOSApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [TripRecord.self, Stop.self])
+        .modelContainer(for: [TripRecord.self, Stop.self, UserProfile.self, Hub.self, PredictionAccuracy.self])
     }
 }

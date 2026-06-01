@@ -286,7 +286,7 @@ class SyncManager: ObservableObject {
         }
     }
     
-    /// Syncs the normalized stops library from Firestore to local SwiftData.
+    /// Syncs the normalized stops library and Hub metadata from Firestore to local SwiftData.
     func syncStops(modelContext: ModelContext) {
         let db = Firestore.firestore()
         let lastStopSyncKey = "lastStopsSyncTimestamp"
@@ -298,6 +298,32 @@ class SyncManager: ObservableObject {
             return
         }
         
+        // Sync Hubs first
+        db.collection("hubs").getDocuments { snapshot, error in
+            guard let documents = snapshot?.documents else { return }
+            Task { @MainActor in
+                for doc in documents {
+                    let data = doc.data()
+                    let id = doc.documentID
+                    let name = data["name"] as? String ?? ""
+                    let lat = data["latitude"] as? Double ?? 0
+                    let lon = data["longitude"] as? Double ?? 0
+                    
+                    let descriptor = FetchDescriptor<Hub>(predicate: #Predicate { $0.id == id })
+                    let existing = try? modelContext.fetch(descriptor).first
+                    
+                    if let hub = existing {
+                        hub.name = name
+                        hub.latitude = lat
+                        hub.longitude = lon
+                    } else {
+                        modelContext.insert(Hub(id: id, name: name, latitude: lat, longitude: lon))
+                    }
+                }
+            }
+        }
+        
+        // Sync Stops
         db.collection("stops").getDocuments { snapshot, error in
             guard let documents = snapshot?.documents else {
                 print("Error fetching stops: \(error?.localizedDescription ?? "unknown")")
@@ -341,6 +367,64 @@ class SyncManager: ObservableObject {
                 try? modelContext.save()
                 UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastStopSyncKey)
                 print("Synced \(documents.count) stops to local library.")
+            }
+        }
+    }
+    
+    /// Syncs the user's profile metadata from Firestore to local SwiftData.
+    func syncProfile(modelContext: ModelContext, userId: String) {
+        let db = Firestore.firestore()
+        db.collection("profiles").document(userId).getDocument { snapshot, error in
+            guard let data = snapshot?.data(), snapshot?.exists == true else { return }
+            
+            Task { @MainActor in
+                let nickname = data["nickname"] as? String
+                let defaultAgency = data["defaultAgency"] as? String ?? "TTC"
+                let isPremium = data["isPremium"] as? Bool ?? false
+                let isAdmin = data["isAdmin"] as? Bool ?? false
+                let joinedAt = (data["createdAt"] as? Timestamp)?.dateValue()
+                
+                let descriptor = FetchDescriptor<UserProfile>(predicate: #Predicate { $0.userId == userId })
+                let existing = try? modelContext.fetch(descriptor).first
+                
+                if let profile = existing {
+                    profile.nickname = nickname
+                    profile.defaultAgency = defaultAgency
+                    profile.isPremium = isPremium
+                    profile.isAdmin = isAdmin
+                    profile.joinedAt = joinedAt
+                } else {
+                    let newProfile = UserProfile(userId: userId, nickname: nickname, defaultAgency: defaultAgency, isPremium: isPremium, isAdmin: isAdmin, joinedAt: joinedAt)
+                    modelContext.insert(newProfile)
+                }
+                try? modelContext.save()
+                print("Profile synced for user: \(userId)")
+            }
+        }
+        
+        // Also sync accuracy stats
+        db.collection("predictionAccuracy").document(userId).getDocument { snapshot, error in
+            guard let data = snapshot?.data(), snapshot?.exists == true else { return }
+            
+            Task { @MainActor in
+                let total = data["total"] as? Int ?? 0
+                let hits = data["hits"] as? Int ?? 0
+                let v5Total = data["v5Total"] as? Int ?? 0
+                let v5Hits = data["v5Hits"] as? Int ?? 0
+                
+                let descriptor = FetchDescriptor<PredictionAccuracy>(predicate: #Predicate { $0.userId == userId })
+                let existing = try? modelContext.fetch(descriptor).first
+                
+                if let stats = existing {
+                    stats.total = total
+                    stats.hits = hits
+                    stats.v5Total = v5Total
+                    stats.v5Hits = v5Hits
+                } else {
+                    let newStats = PredictionAccuracy(userId: userId, total: total, hits: hits, v5Total: v5Total, v5Hits: v5Hits)
+                    modelContext.insert(newStats)
+                }
+                try? modelContext.save()
             }
         }
     }

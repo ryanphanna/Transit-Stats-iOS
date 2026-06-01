@@ -4,6 +4,11 @@ import SwiftData
 struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \TripRecord.startTime, order: .reverse) private var trips: [TripRecord]
+    @Query private var profiles: [UserProfile]
+    @Query private var accuracies: [PredictionAccuracy]
+    
+    private var profile: UserProfile? { profiles.first }
+    private var stats: PredictionAccuracy? { accuracies.first }
     
     var body: some View {
         ZStack {
@@ -14,12 +19,12 @@ struct ProfileView: View {
                     // Header
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Transit Card")
+                            Text(profile?.nickname ?? "Transit Card")
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
-                            Text("Your transit career at a glance.")
+                            Text(profile?.isPremium == true ? "Premium System Member" : "Your transit career at a glance.")
                                 .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.5))
+                                .foregroundColor(profile?.isPremium == true ? .orange : .white.opacity(0.5))
                         }
                         Spacer()
                         Button(action: { dismiss() }) {
@@ -32,13 +37,17 @@ struct ProfileView: View {
                     .padding(.top, 20)
                     
                     // The Transit Card
-                    TransitCard(trips: trips)
+                    TransitCard(trips: trips, profile: profile)
                     
                     // Detailed Stats
                     VStack(spacing: 16) {
                         statRow(label: "Total Trips", value: "\(trips.count)", icon: "tram.fill", color: .blue)
                         statRow(label: "Unique Routes", value: "\(uniqueRoutesCount())", icon: "map.fill", color: .orange)
-                        statRow(label: "Unique Stops", value: "\(uniqueStopsCount())", icon: "mappin.and.ellipse", color: .green)
+                        
+                        if let v5Acc = stats?.v5Accuracy, v5Acc > 0 {
+                            statRow(label: "AI Accuracy", value: String(format: "%.1f%%", v5Acc * 100), icon: "brain.head.profile", color: .purple)
+                        }
+                        
                         statRow(label: "Transit Rank", value: calculateRank(), icon: "star.fill", color: .yellow)
                     }
                     .padding(.horizontal, 24)
@@ -87,13 +96,14 @@ struct ProfileView: View {
 
 struct TransitCard: View {
     let trips: [TripRecord]
+    let profile: UserProfile?
     
     var body: some View {
         ZStack {
             // Card Background with Mesh Gradient-like effect
             RoundedRectangle(cornerRadius: 24)
                 .fill(LinearGradient(
-                    colors: [Color(hex: "1e293b"), Color(hex: "0f172a")],
+                    colors: [profile?.isPremium == true ? Color(hex: "4338ca") : Color(hex: "1e293b"), Color(hex: "0f172a")],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ))
@@ -122,7 +132,7 @@ struct TransitCard: View {
                     Circle()
                         .fill(Color.orange.opacity(0.2))
                         .frame(width: 40, height: 40)
-                        .overlay(Text("T").font(.system(size: 16, weight: .bold)).foregroundColor(.orange))
+                        .overlay(Text(profile?.nickname?.prefix(1).uppercased() ?? "T").font(.system(size: 16, weight: .bold)).foregroundColor(.orange))
                 }
                 .padding(24)
                 
@@ -156,8 +166,8 @@ struct TransitCard: View {
     }
     
     private func joinDate() -> String {
-        guard let first = trips.last else { return "MAY 2026" }
-        return first.startTime.formatted(.dateTime.month().year()).uppercased()
+        let date = profile?.joinedAt ?? trips.last?.startTime ?? Date()
+        return date.formatted(.dateTime.month().year()).uppercased()
     }
     
     private func topRoute() -> String {

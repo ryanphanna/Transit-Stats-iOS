@@ -8,6 +8,7 @@ struct AddTripView: View {
     
     @Query(sort: \TripRecord.startTime, order: .reverse) private var tripHistory: [TripRecord]
     @Query private var stops: [Stop]
+    @Query private var profiles: [UserProfile]
 
     // Step 1: waiting at stop
     @State private var stopText = ""
@@ -20,6 +21,8 @@ struct AddTripView: View {
     @State private var detectedStops: [String] = []
     @State private var showingRoutePicker = false
     @State private var showingStopPicker = false
+    
+    private var profile: UserProfile? { profiles.first }
     
     private var nearbyHubs: [NearbyHub] {
         guard let location = locationManager.lastLocation else { return [] }
@@ -649,6 +652,10 @@ struct NearbyHub: Identifiable {
     let id: String
     let name: String
     let isVerified: Bool
+    let distance: Double
+    let stops: [Stop]
+}
+ified: Bool
     let distance: Double
     let stops: [Stop]
 }

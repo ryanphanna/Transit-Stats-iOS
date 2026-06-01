@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Full Offline Mirroring**: Implemented comprehensive offline caching for user profiles, station hubs, and prediction accuracy stats. The app now persists your preferred agency, canonical station names, and AI performance metrics locally, ensuring a fully personalized experience even without a network connection.
 - **Transit Card Profile**: Implemented a premium "Transit Card" feature, inspired by Flighty's Passport. The profile now features a holographic digital card summarizing the user's transit career, including unique stats, top route badges, and dynamic rank titles (e.g., "System Master").
 - **On-Device OCR "Scan to Start"**: Integrated the Vision framework to allow users to scan bus poles, stop signs, or vehicle numbers via the camera. The app automatically extracts route numbers and stop names, pre-filling the logger for a high-speed, zero-typing entry experience.
 - **Strictly Normalized Hub Model**: Refactored the app to follow a strictly normalized data architecture. Trips now link exclusively to Stops (via names/codes), and Hub resolution is performed dynamically via the local Stops library. Removed denormalized `startHubId` and `endHubId` fields from the trip model.
