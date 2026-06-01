@@ -41,3 +41,9 @@ This roadmap outlines the planned features and platform-specific goals for the T
     *   *Motion-Based Trip Detection*: Use `CMMotionActivityManager` to passively detect when the user transitions into a vehicle and surface a prompt to start a trip — no need to open the app while waiting at the stop.
     *   *Smart Shortcut Ranking*: A lightweight on-device Core ML classifier trained on personal trip history ranks shortcuts by time of day and day of week, so the right route appears at the right time.
     *   *Trip Anomaly Detection*: Compare active trip duration against historical averages for the same route and prompt to end or discard if it runs unusually long — catching forgotten trips before they skew stats.
+
+*   **"Rocket" Research Instrument (Admin Only)**:
+    *   Restricted to admin users; provides high-fidelity telemetry for transit research.
+    *   *Background GPS breadcrumbing*: Record the entire journey path (high-frequency GPS) for the duration of the session.
+    *   *Real-time event logging*: Dedicated interface to capture micro-events like Door state (dwell time), Signal state (delays), and Motion state.
+    *   *Direct Telemetry Sync*: Persist telemetry events directly to the specialized `rocket_trips` Firestore collection.
