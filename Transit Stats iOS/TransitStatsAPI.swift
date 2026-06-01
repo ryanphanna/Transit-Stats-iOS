@@ -156,6 +156,8 @@ class TransitStatsAPI: ObservableObject {
             "startLongitude": trip.startLongitude ?? NSNull(),
             "endLatitude": trip.endLatitude ?? NSNull(),
             "endLongitude": trip.endLongitude ?? NSNull(),
+            "startAccuracy": trip.startAccuracy ?? NSNull(),
+            "endAccuracy": trip.endAccuracy ?? NSNull(),
             "notes": trip.notes ?? NSNull(),
             "vehicle": trip.vehicle ?? NSNull(),
             "source": trip.source,
@@ -358,6 +360,9 @@ class SyncManager: ObservableObject {
                 let endLatitude = data["endLatitude"] as? Double
                 let endLongitude = data["endLongitude"] as? Double
                 
+                let startAccuracy = data["startAccuracy"] as? Double
+                let endAccuracy = data["endAccuracy"] as? Double
+                
                 let notes = data["notes"] as? String
                 let vehicle = data["vehicle"] as? String
                 let source = data["source"] as? String ?? "ios"
@@ -382,6 +387,8 @@ class SyncManager: ObservableObject {
                     record.startLongitude = startLongitude
                     record.endLatitude = endLatitude
                     record.endLongitude = endLongitude
+                    record.startAccuracy = startAccuracy
+                    record.endAccuracy = endAccuracy
                     record.notes = notes
                     record.vehicle = vehicle
                     record.source = source
@@ -404,6 +411,8 @@ class SyncManager: ObservableObject {
                         startLongitude: startLongitude,
                         endLatitude: endLatitude,
                         endLongitude: endLongitude,
+                        startAccuracy: startAccuracy,
+                        endAccuracy: endAccuracy,
                         notes: notes,
                         vehicle: vehicle,
                         source: source,

@@ -568,8 +568,10 @@ struct HomeView: View {
                 trip.endTime = Date()
                 trip.endLatitude = locationManager.lastLocation?.coordinate.latitude
                 trip.endLongitude = locationManager.lastLocation?.coordinate.longitude
+                trip.endAccuracy = locationManager.lastLocation?.horizontalAccuracy
 
                 // Save locally first
+
                 try? modelContext.save()
 
         

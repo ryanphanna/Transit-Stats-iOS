@@ -174,14 +174,27 @@ struct AddTripView: View {
                     }
                 }
 
-                // Current time display
-                HStack(spacing: 6) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.white.opacity(0.3))
-                    Text("Arrival logged at \(Date().formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.white.opacity(0.3))
+                // Current time & GPS display
+                HStack(spacing: 12) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color.white.opacity(0.3))
+                        Text("Arrival logged at \(Date().formatted(date: .omitted, time: .shortened))")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color.white.opacity(0.3))
+                    }
+                    
+                    // GPS Status
+                    HStack(spacing: 4) {
+                        Image(systemName: locationManager.isAccuracySufficient ? "location.fill" : "location.slash.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(locationManager.isAccuracySufficient ? .green.opacity(0.5) : .orange)
+                        
+                        Text(locationManager.signalQuality)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(locationManager.isAccuracySufficient ? .white.opacity(0.3) : .orange)
+                    }
                 }
                 .padding(.horizontal, 28)
                 .padding(.top, 2)
@@ -475,6 +488,7 @@ struct AddTripView: View {
             startStopName: stop.isEmpty ? nil : stop,
             startLatitude: locationManager.lastLocation?.coordinate.latitude,
             startLongitude: locationManager.lastLocation?.coordinate.longitude,
+            startAccuracy: locationManager.lastLocation?.horizontalAccuracy,
             userId: userId,
             isSynced: false
         )
