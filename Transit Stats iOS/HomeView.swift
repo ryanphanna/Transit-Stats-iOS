@@ -3,6 +3,16 @@ import SwiftData
 import Combine
 import MapKit
 
+// Simple Line shape helper for the timeline connection
+struct Line: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        return path
+    }
+}
+
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<TripRecord> { $0.endTime == nil }, sort: \TripRecord.startTime, order: .reverse)
@@ -13,7 +23,6 @@ struct HomeView: View {
     
     @StateObject private var api = TransitStatsAPI.shared
     
-    @State private var commandText = ""
     @State private var endStopText = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -95,9 +104,6 @@ struct HomeView: View {
                                 readyStateCard
                             }
                             
-                            // Console Logger
-                            consoleLoggerSection
-                            
                             // API Response Panel
                             if !api.lastReplies.isEmpty {
                                 repliesPanel
@@ -143,92 +149,118 @@ struct HomeView: View {
     // MARK: - Views
     
     private func activeTripCard(_ trip: TripRecord) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 18) {
+            // Status Row (App in the Air uppercase bold style)
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("ACTIVE TRIP")
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
-                        .kerning(1.2)
-                    
-                    Text(trip.route)
-                        .font(.system(.title3, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 6, height: 6)
+                    Text("IN TRANSIT")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.orange)
+                        .kerning(1.5)
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.12))
+                .cornerRadius(4)
                 
                 Spacer()
                 
-                ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(0.2))
-                        .frame(width: 40, height: 40)
-                    
+                Text(trip.agency.uppercased())
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.gray)
+                    .kerning(1)
+            }
+            
+            // Route Header Board
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(trip.route)
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                    if !trip.direction.isEmpty {
+                        Text(trip.direction.uppercased())
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.gray)
+                            .kerning(0.8)
+                    }
+                }
+                Spacer()
+            }
+            
+            // Boarding Pass / Travel Timeline
+            HStack(spacing: 12) {
+                // Origin Stop
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("BOARDED")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.gray)
+                        .kerning(1)
+                    Text(trip.startStopName ?? trip.startStopCode ?? "Unknown stop")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                // Flight/Trip Timeline Connection Graphic
+                HStack(spacing: 4) {
+                    Circle().fill(Color.blue).frame(width: 5, height: 5)
+                    Line()
+                        .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [3]))
+                        .frame(height: 1)
+                        .foregroundColor(.blue.opacity(0.4))
                     Image(systemName: "tram.fill")
+                        .font(.system(size: 12))
                         .foregroundColor(.blue)
-                        .font(.subheadline)
+                    Line()
+                        .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [3]))
+                        .frame(height: 1)
+                        .foregroundColor(.blue.opacity(0.4))
+                    Circle().fill(Color.white.opacity(0.3)).frame(width: 5, height: 5)
                 }
+                .frame(width: 70)
+                
+                // Destination Stop (Pending input)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("DESTINATION")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.gray)
+                        .kerning(1)
+                    Text(endStopText.isEmpty ? "SELECT EXIT" : endStopText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(endStopText.isEmpty ? .gray : .white)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
+            .padding(.vertical, 6)
             
-            Divider().background(Color.white.opacity(0.08))
-            
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: "circle.circle")
-                        .foregroundColor(.green)
-                        .font(.footnote)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Boarded At")
-                            .font(.system(size: 10))
-                            .foregroundColor(.gray)
-                        Text(trip.startStopName ?? trip.startStopCode ?? "Unknown stop")
-                            .font(.footnote)
-                            .foregroundColor(.white)
-                    }
-                }
-                
-                if !trip.direction.isEmpty {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.right.circle")
-                            .foregroundColor(.gray)
-                            .font(.footnote)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text("Direction")
-                                .font(.system(size: 10))
-                                .foregroundColor(.gray)
-                            Text(trip.direction)
-                                .font(.footnote)
-                                .foregroundColor(.white)
-                        }
-                    }
-                }
-                
-                HStack(spacing: 8) {
-                    Image(systemName: "stopwatch")
+            // Duration Status Panel
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TIME ELAPSED")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.gray)
+                        .kerning(1)
+                    Text(timeElapsed.uppercased())
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundColor(.orange)
-                        .font(.footnote)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Duration")
-                            .font(.system(size: 10))
-                            .foregroundColor(.gray)
-                        Text(timeElapsed)
-                            .font(.footnote)
-                            .foregroundColor(.white)
-                    }
                 }
+                Spacer()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             
             Divider().background(Color.white.opacity(0.08))
             
-            // End trip input
-            VStack(spacing: 10) {
-                TextField("Exit Stop Code or Name", text: $endStopText)
-                    .font(.footnote)
+            // End trip input & buttons
+            VStack(spacing: 12) {
+                TextField("Enter Exit Stop Code or Name", text: $endStopText)
+                    .font(.system(size: 13, weight: .medium))
                     .padding(.vertical, 10)
                     .padding(.horizontal, 12)
-                    .background(Color.white.opacity(0.06))
+                    .background(Color.white.opacity(0.05))
                     .cornerRadius(8)
                     .foregroundColor(.white)
                     .overlay(
@@ -244,15 +276,17 @@ struct HomeView: View {
                                 ProgressView().tint(.white)
                             } else {
                                 Image(systemName: "checkmark.circle.fill")
-                                Text("End Trip")
-                                    .fontWeight(.semibold)
+                                Text("COMPLETE JOURNEY")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .kerning(0.8)
                             }
                             Spacer()
                         }
-                        .padding(.vertical, 10)
-                        .background(Color.green)
+                        .padding(.vertical, 12)
+                        .background(Color.orange)
                         .foregroundColor(.white)
                         .cornerRadius(8)
+                        .shadow(color: Color.orange.opacity(0.25), radius: 6, x: 0, y: 3)
                     }
                     .disabled(api.isSendingCommand)
                     
@@ -265,116 +299,84 @@ struct HomeView: View {
                             .foregroundColor(.gray)
                             .padding(.vertical, 8)
                             .padding(.horizontal, 12)
-                            .background(Color.white.opacity(0.08))
+                            .background(Color.white.opacity(0.06))
                             .cornerRadius(8)
                     }
                 }
             }
         }
-        .padding()
-        .background(Color.black.opacity(0.25))
-        .cornerRadius(16)
+        .padding(20)
+        .background(Color(hex: "0d1527").opacity(0.9))
+        .cornerRadius(18)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 18)
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
     }
     
     private var readyStateCard: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "tram.fill")
-                .font(.system(size: 24))
-                .foregroundColor(.blue)
-                .frame(width: 56, height: 56)
-                .background(Color.blue.opacity(0.15))
-                .clipShape(Circle())
+        VStack(spacing: 18) {
+            // Flight Board Style Status Line
+            HStack {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.gray)
+                        .frame(width: 6, height: 6)
+                    Text("NO ACTIVE TRIP")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.gray)
+                        .kerning(1.5)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.06))
+                .cornerRadius(4)
+                
+                Spacer()
+            }
             
-            VStack(spacing: 4) {
-                Text("Where are you heading?")
-                    .font(.subheadline)
-                    .fontWeight(.bold)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Ready to go?")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
-                Text("Start a new journey or tap a recent shortcut below.")
+                Text("Tap below when you're heading to your stop.")
                     .font(.system(size: 11))
                     .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
             }
-            .padding(.horizontal)
+            .frame(maxWidth: .infinity, alignment: .leading)
             
             Button(action: { isShowingAddTripSheet = true }) {
-                HStack {
-                    Image(systemName: "play.fill")
-                        .font(.caption)
-                    Text("Start New Trip")
-                        .fontWeight(.bold)
-                        .font(.subheadline)
+                HStack(spacing: 8) {
+                    Image(systemName: "tram.fill")
+                        .font(.system(size: 12))
+                    Text("Start Trip")
+                        .font(.system(size: 13, weight: .bold))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(LinearGradient(colors: [Color.blue, Color.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .padding(.vertical, 13)
+                .background(LinearGradient(colors: [Color.orange, Color(hex: "ff6b35")], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .foregroundColor(.white)
                 .cornerRadius(10)
-                .shadow(color: Color.blue.opacity(0.2), radius: 8, x: 0, y: 4)
+                .shadow(color: Color.orange.opacity(0.25), radius: 8, x: 0, y: 4)
             }
-            .padding(.horizontal, 24)
         }
-        .padding(.vertical, 20)
-        .frame(maxWidth: .infinity)
-        .background(Color.black.opacity(0.25))
-        .cornerRadius(16)
+        .padding(20)
+        .background(Color(hex: "0d1527").opacity(0.9))
+        .cornerRadius(18)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
     }
-    
-    private var consoleLoggerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Quick Text Log")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundColor(.white.opacity(0.9))
-            
-            HStack {
-                TextField("e.g. 506 College Westbound", text: $commandText, onCommit: submitCommand)
-                    .font(.footnote)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 12)
-                    .background(Color.white.opacity(0.06))
-                    .cornerRadius(8)
-                    .foregroundColor(.white)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                    )
-                
-                Button(action: submitCommand) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(LinearGradient(colors: [Color.blue, Color.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 38, height: 38)
-                        
-                        if api.isSendingCommand {
-                            ProgressView().tint(.white)
-                        } else {
-                            Image(systemName: "paperplane.fill")
-                                .foregroundColor(.white)
-                                .font(.footnote)
-                        }
-                    }
-                }
-                .disabled(api.isSendingCommand || commandText.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
-    }
-    
     private var repliesPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("System Update")
-                    .font(.system(size: 10))
-                    .fontWeight(.bold)
+                Text("NETWORK UPDATE")
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundColor(.gray)
+                    .kerning(1)
                 Spacer()
                 Button(action: { api.lastReplies = [] }) {
                     Image(systemName: "xmark.circle.fill")
@@ -393,11 +395,11 @@ struct HomeView: View {
                 }
             }
             .padding(10)
-            .background(Color.blue.opacity(0.15))
+            .background(Color.blue.opacity(0.12))
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+                    .stroke(Color.blue.opacity(0.2), lineWidth: 1)
             )
         }
         .transition(.opacity.combined(with: .scale))
@@ -405,10 +407,10 @@ struct HomeView: View {
     
     private var shortcutsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Recent Shortcuts")
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
+            Text("RECENT SHORTCUTS")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.gray)
+                .kerning(1)
             
             // Extract top unique route/stop combinations from completed trips
             let shortcuts = getShortcutOptions()
@@ -425,27 +427,27 @@ struct HomeView: View {
                             Button(action: { startShortcut(shortcut.command) }) {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(shortcut.route)
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundColor(.blue)
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(.orange)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
-                                        .background(Color.blue.opacity(0.2))
+                                        .background(Color.orange.opacity(0.15))
                                         .cornerRadius(4)
                                     
                                     Text(shortcut.stopName)
-                                        .font(.system(size: 11, weight: .medium))
+                                        .font(.system(size: 11, weight: .semibold))
                                         .foregroundColor(.white)
                                         .lineLimit(1)
                                     
                                     if !shortcut.direction.isEmpty {
-                                        Text(shortcut.direction)
-                                            .font(.system(size: 9))
+                                        Text(shortcut.direction.uppercased())
+                                            .font(.system(size: 8, weight: .bold))
                                             .foregroundColor(.gray)
                                     }
                                 }
-                                .padding(10)
-                                .frame(width: 120, alignment: .leading)
-                                .background(Color.black.opacity(0.2))
+                                .padding(12)
+                                .frame(width: 125, alignment: .leading)
+                                .background(Color.black.opacity(0.25))
                                 .cornerRadius(10)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 10)
@@ -465,19 +467,9 @@ struct HomeView: View {
         let diff = Date().timeIntervalSince(trip.startTime)
         let mins = Int(diff / 60)
         if mins < 1 {
-            timeElapsed = "Just started"
+            timeElapsed = "0 min"
         } else {
-            timeElapsed = "\(mins) min elapsed"
-        }
-    }
-    
-    private func submitCommand() {
-        let text = commandText.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return }
-        
-        Task {
-            await api.sendCommand(text)
-            commandText = ""
+            timeElapsed = "\(mins) min"
         }
     }
     
