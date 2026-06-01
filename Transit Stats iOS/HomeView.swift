@@ -34,35 +34,42 @@ struct HomeView: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     
     private var mapMarkers: [TripMarker] {
-        var markers: [TripMarker] = []
+        var hubs: [String: (lat: Double, lon: Double, count: Int, route: String)] = [:]
         
-        // Add markers for completed trips
-        for trip in completedTrips.prefix(20) {
-            if let lat = trip.startLatitude, let lon = trip.startLongitude {
-                markers.append(TripMarker(
-                    id: "\(trip.id)-start",
-                    coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                    type: .start,
-                    route: trip.route
-                ))
-            }
-            if let lat = trip.endLatitude, let lon = trip.endLongitude {
-                markers.append(TripMarker(
-                    id: "\(trip.id)-end",
-                    coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                    type: .end,
-                    route: trip.route
-                ))
+        // Group all completed trips into hubs by stop name
+        for trip in completedTrips {
+            guard let name = trip.startStopName ?? trip.startStopCode,
+                  let lat = trip.startLatitude,
+                  let lon = trip.startLongitude else { continue }
+            
+            if var existing = hubs[name] {
+                existing.count += 1
+                hubs[name] = existing
+            } else {
+                hubs[name] = (lat: lat, lon: lon, count: 1, route: trip.route)
             }
         }
         
-        // Add marker for active trip
+        var markers: [TripMarker] = hubs.map { name, data in
+            TripMarker(
+                id: name,
+                coordinate: CLLocationCoordinate2D(latitude: data.lat, longitude: data.lon),
+                count: data.count,
+                label: name,
+                route: data.route
+            )
+        }
+        
+        // Add active trip if exists
         if let trip = activeTrip, let lat = trip.startLatitude, let lon = trip.startLongitude {
+            let name = trip.startStopName ?? trip.startStopCode ?? "Active"
             markers.append(TripMarker(
-                id: "\(trip.id)-active",
+                id: "active",
                 coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                type: .active,
-                route: trip.route
+                count: 1,
+                label: name,
+                route: trip.route,
+                isActive: true
             ))
         }
         
@@ -82,8 +89,24 @@ struct HomeView: View {
             // Full Screen Interactive Map Background
             Map(position: $cameraPosition) {
                 ForEach(mapMarkers) { marker in
-                    Marker(marker.route, systemImage: marker.icon, coordinate: marker.coordinate)
-                        .tint(marker.color)
+                    Annotation(marker.label, coordinate: marker.coordinate) {
+                        ZStack {
+                            Circle()
+                                .fill(marker.isActive ? Color.orange : Color.blue)
+                                .frame(width: 28, height: 28)
+                                .shadow(color: .black.opacity(0.3), radius: 3)
+                            
+                            if marker.isActive {
+                                Image(systemName: "tram.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                            } else {
+                                Text("\(marker.count)")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
                 }
                 
                 UserAnnotation()
@@ -641,26 +664,8 @@ struct HomeView: View {
 struct TripMarker: Identifiable {
     let id: String
     let coordinate: CLLocationCoordinate2D
-    let type: MarkerType
+    let count: Int
+    let label: String
     let route: String
-    
-    enum MarkerType {
-        case start, end, active
-    }
-    
-    var color: Color {
-        switch type {
-        case .start: return .blue
-        case .end: return .red
-        case .active: return .orange
-        }
-    }
-    
-    var icon: String {
-        switch type {
-        case .start: return "arrow.up.circle.fill"
-        case .end: return "arrow.down.circle.fill"
-        case .active: return "tram.fill"
-        }
-    }
+    var isActive: Bool = false
 }
