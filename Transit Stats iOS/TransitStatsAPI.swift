@@ -229,6 +229,50 @@ class SyncManager: ObservableObject {
         }
     }
     
+    /// Syncs the normalized stops library from Firestore to local SwiftData.
+    func syncStops(modelContext: ModelContext) {
+        let db = Firestore.firestore()
+        
+        // In a real app, we might filter by agency or location, 
+        // but for personal use we'll just grab the library.
+        db.collection("stops").getDocuments { snapshot, error in
+            guard let documents = snapshot?.documents else {
+                print("Error fetching stops: \(error?.localizedDescription ?? "unknown")")
+                return
+            }
+            
+            Task { @MainActor in
+                for doc in documents {
+                    let data = doc.data()
+                    let id = doc.documentID
+                    let name = data["name"] as? String ?? ""
+                    let code = data["code"] as? String
+                    let lat = data["latitude"] as? Double ?? 0
+                    let lon = data["longitude"] as? Double ?? 0
+                    let agencies = data["agencies"] as? [String] ?? []
+                    
+                    if lat == 0 || lon == 0 { continue } // Skip stops without coordinates
+                    
+                    let descriptor = FetchDescriptor<Stop>(predicate: #Predicate { $0.id == id })
+                    let existing = try? modelContext.fetch(descriptor).first
+                    
+                    if let stop = existing {
+                        stop.name = name
+                        stop.code = code
+                        stop.latitude = lat
+                        stop.longitude = lon
+                        stop.agencies = agencies
+                    } else {
+                        let newStop = Stop(id: id, name: name, code: code, latitude: lat, longitude: lon, agencies: agencies)
+                        modelContext.insert(newStop)
+                    }
+                }
+                try? modelContext.save()
+                print("Synced \(documents.count) stops to local library.")
+            }
+        }
+    }
+    
     private func syncTrips(_ changes: [DocumentChange], in context: ModelContext, userId: String) {
         for change in changes {
             let doc = change.document

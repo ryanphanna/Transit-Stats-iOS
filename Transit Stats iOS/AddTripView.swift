@@ -7,9 +7,25 @@ struct AddTripView: View {
     @StateObject private var locationManager = LocationManager.shared
     
     @Query(sort: \TripRecord.startTime, order: .reverse) private var tripHistory: [TripRecord]
+    @Query private var stops: [Stop]
 
     // Step 1: waiting at stop
     @State private var stopText = ""
+    
+    private var nearbyStops: [Stop] {
+        guard let location = locationManager.lastLocation else { return [] }
+        
+        // Find stops within ~500 meters (approx 0.005 degrees)
+        return stops.filter { stop in
+            let stopLocation = CLLocation(latitude: stop.latitude, longitude: stop.longitude)
+            return stopLocation.distance(from: location) < 500
+        }
+        .sorted { stopA, stopB in
+            let locA = CLLocation(latitude: stopA.latitude, longitude: stopA.longitude)
+            let locB = CLLocation(latitude: stopB.latitude, longitude: stopB.longitude)
+            return locA.distance(from: location) < locB.distance(from: location)
+        }
+    }
 
     // Step 2: boarded — enter route
     @State private var routeText = ""
@@ -126,6 +142,36 @@ struct AddTripView: View {
                         .autocorrectionDisabled()
                         .submitLabel(.next)
                         .onSubmit { advanceToBoard() }
+                }
+
+                // Nearby stop suggestions
+                if !nearbyStops.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(nearbyStops.prefix(5)) { stop in
+                                Button(action: {
+                                    stopText = stop.name
+                                    advanceToBoard()
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "mappin.and.ellipse")
+                                            .font(.system(size: 10))
+                                        Text(stop.name)
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.white.opacity(0.1))
+                                    .cornerRadius(12)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                    )
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
                 }
 
                 // Current time display

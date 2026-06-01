@@ -22,6 +22,9 @@ struct ContentView: View {
                         if let uid = authManager.currentUser?.uid {
                             SyncManager.shared.startSyncing(modelContext: modelContext, userId: uid)
                             
+                            // Sync the normalized stops library
+                            SyncManager.shared.syncStops(modelContext: modelContext)
+                            
                             // Also sync any pending trips from previous offline sessions
                             if networkMonitor.isConnected {
                                 SyncManager.shared.syncPendingTrips(modelContext: modelContext)
