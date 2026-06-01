@@ -547,14 +547,18 @@ struct HomeView: View {
             private func startShortcut(_ shortcut: ShortcutOption) {
                 guard let userId = AuthManager.shared.currentUser?.uid else { return }
 
+                let location = locationManager.lastLocation
+                let useLocation = locationManager.isAccuracySufficient
+
                 let newTrip = TripRecord(
                     route: shortcut.route,
                     direction: shortcut.direction,
                     agency: "TTC", // Default for shortcuts for now, could be stored in ShortcutOption
                     startTime: Date(),
                     startStopName: shortcut.stopName,
-                    startLatitude: locationManager.lastLocation?.coordinate.latitude,
-                    startLongitude: locationManager.lastLocation?.coordinate.longitude,
+                    startLatitude: useLocation ? location?.coordinate.latitude : nil,
+                    startLongitude: useLocation ? location?.coordinate.longitude : nil,
+                    startAccuracy: useLocation ? location?.horizontalAccuracy : nil,
                     userId: userId,
                     isSynced: false
                 )
@@ -569,13 +573,16 @@ struct HomeView: View {
                 let stop = endStopText.trimmingCharacters(in: .whitespaces)
                 trip.endStopName = stop.isEmpty ? nil : stop
                 trip.endTime = Date()
-                trip.endLatitude = locationManager.lastLocation?.coordinate.latitude
-                trip.endLongitude = locationManager.lastLocation?.coordinate.longitude
-                trip.endAccuracy = locationManager.lastLocation?.horizontalAccuracy
+
+                if locationManager.isAccuracySufficient, let location = locationManager.lastLocation {
+                    trip.endLatitude = location.coordinate.latitude
+                    trip.endLongitude = location.coordinate.longitude
+                    trip.endAccuracy = location.horizontalAccuracy
+                }
 
                 // Save locally first
-
                 try? modelContext.save()
+
 
         
         // Clear UI

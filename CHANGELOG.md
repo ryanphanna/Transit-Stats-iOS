@@ -5,7 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **Background GPS Validation**: Implemented silent GPS quality filtering. The app continues to capture high-precision accuracy data for the backend, but now automatically filters out poor-quality coordinates from the HomeView map to ensure the visualization remains accurate and uncluttered.
+- **GPS Data Quality Filtering**: Updated the location capture engine to automatically discard coordinates with poor horizontal accuracy (> 65m). This prevents "noisy" data from subways or tunnels from skewing your trip history and ensures the normalized stops library remains high-quality.
+- **Background GPS Validation**: Implemented silent GPS quality filtering for the HomeView map visualization.
 - **Optimized Data Sync Strategy**: Implemented "Initial Hydration" and incremental syncing. Power users now see their most recent 50 trips instantly, while the rest of their history backfills in the background. Subsequent launches only sync delta changes, significantly reducing battery and data usage.
 - **Intelligent Direction Suggestions**: Enhanced `AddTripView` to automatically predict and suggest journey directions based on historical patterns, further reducing manual input.
 - **Polished Map Hubs**: Added visual refinements to the HomeView map, including scaled hub markers (based on frequency), pulsing active trip animations, and smart auto-framing of the camera view.

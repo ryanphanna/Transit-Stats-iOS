@@ -467,15 +467,18 @@ struct AddTripView: View {
 
         let stop = stopText.trimmingCharacters(in: .whitespaces)
         
+        let location = locationManager.lastLocation
+        let useLocation = locationManager.isAccuracySufficient
+        
         let newTrip = TripRecord(
             route: route,
             direction: direction,
             agency: agency,
             startTime: waitingSince ?? Date(),
             startStopName: stop.isEmpty ? nil : stop,
-            startLatitude: locationManager.lastLocation?.coordinate.latitude,
-            startLongitude: locationManager.lastLocation?.coordinate.longitude,
-            startAccuracy: locationManager.lastLocation?.horizontalAccuracy,
+            startLatitude: useLocation ? location?.coordinate.latitude : nil,
+            startLongitude: useLocation ? location?.coordinate.longitude : nil,
+            startAccuracy: useLocation ? location?.horizontalAccuracy : nil,
             userId: userId,
             isSynced: false
         )
