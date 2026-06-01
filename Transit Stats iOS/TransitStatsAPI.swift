@@ -152,6 +152,10 @@ class TransitStatsAPI: ObservableObject {
             "startStopName": trip.startStopName ?? NSNull(),
             "endStopCode": trip.endStopCode ?? NSNull(),
             "endStopName": trip.endStopName ?? NSNull(),
+            "startLatitude": trip.startLatitude ?? NSNull(),
+            "startLongitude": trip.startLongitude ?? NSNull(),
+            "endLatitude": trip.endLatitude ?? NSNull(),
+            "endLongitude": trip.endLongitude ?? NSNull(),
             "notes": trip.notes ?? NSNull(),
             "vehicle": trip.vehicle ?? NSNull(),
             "source": trip.source,
@@ -245,6 +249,11 @@ class SyncManager: ObservableObject {
                 let endStopCode = data["endStopCode"] as? String
                 let endStopName = data["endStopName"] as? String
                 
+                let startLatitude = data["startLatitude"] as? Double
+                let startLongitude = data["startLongitude"] as? Double
+                let endLatitude = data["endLatitude"] as? Double
+                let endLongitude = data["endLongitude"] as? Double
+                
                 let notes = data["notes"] as? String
                 let vehicle = data["vehicle"] as? String
                 let source = data["source"] as? String ?? "ios"
@@ -265,6 +274,10 @@ class SyncManager: ObservableObject {
                     record.startStopName = startStopName
                     record.endStopCode = endStopCode
                     record.endStopName = endStopName
+                    record.startLatitude = startLatitude
+                    record.startLongitude = startLongitude
+                    record.endLatitude = endLatitude
+                    record.endLongitude = endLongitude
                     record.notes = notes
                     record.vehicle = vehicle
                     record.source = source
@@ -283,6 +296,10 @@ class SyncManager: ObservableObject {
                         startStopName: startStopName,
                         endStopCode: endStopCode,
                         endStopName: endStopName,
+                        startLatitude: startLatitude,
+                        startLongitude: startLongitude,
+                        endLatitude: endLatitude,
+                        endLongitude: endLongitude,
                         notes: notes,
                         vehicle: vehicle,
                         source: source,

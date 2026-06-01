@@ -4,6 +4,7 @@ struct AddTripView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @StateObject private var authManager = AuthManager.shared
+    @StateObject private var locationManager = LocationManager.shared
 
     // Step 1: waiting at stop
     @State private var stopText = ""
@@ -71,6 +72,13 @@ struct AddTripView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            locationManager.requestPermission()
+            locationManager.startUpdating()
+        }
+        .onDisappear {
+            locationManager.stopUpdating()
+        }
     }
 
     // MARK: - Step Views
@@ -351,6 +359,8 @@ struct AddTripView: View {
             agency: agency,
             startTime: waitingSince ?? Date(),
             startStopName: stop.isEmpty ? nil : stop,
+            startLatitude: locationManager.lastLocation?.coordinate.latitude,
+            startLongitude: locationManager.lastLocation?.coordinate.longitude,
             userId: userId,
             isSynced: false
         )

@@ -13,6 +13,10 @@ final class TripRecord {
     var startStopName: String?
     var endStopCode: String?
     var endStopName: String?
+    var startLatitude: Double?
+    var startLongitude: Double?
+    var endLatitude: Double?
+    var endLongitude: Double?
     var notes: String?
     var vehicle: String?
     var source: String
@@ -32,6 +36,10 @@ final class TripRecord {
         startStopName: String? = nil,
         endStopCode: String? = nil,
         endStopName: String? = nil,
+        startLatitude: Double? = nil,
+        startLongitude: Double? = nil,
+        endLatitude: Double? = nil,
+        endLongitude: Double? = nil,
         notes: String? = nil,
         vehicle: String? = nil,
         source: String = "ios",
@@ -50,6 +58,10 @@ final class TripRecord {
         self.startStopName = startStopName
         self.endStopCode = endStopCode
         self.endStopName = endStopName
+        self.startLatitude = startLatitude
+        self.startLongitude = startLongitude
+        self.endLatitude = endLatitude
+        self.endLongitude = endLongitude
         self.notes = notes
         self.vehicle = vehicle
         self.source = source

@@ -22,6 +22,7 @@ struct HomeView: View {
     private var completedTrips: [TripRecord]
     
     @StateObject private var api = TransitStatsAPI.shared
+    @StateObject private var locationManager = LocationManager.shared
     
     @State private var endStopText = ""
     @State private var showAlert = false
@@ -130,6 +131,13 @@ struct HomeView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            locationManager.requestPermission()
+            locationManager.startUpdating()
+        }
+        .onDisappear {
+            locationManager.stopUpdating()
+        }
         .sheet(isPresented: $isShowingAddTripSheet) {
             AddTripView()
         }
@@ -474,30 +482,36 @@ struct HomeView: View {
             }
 
             private func startShortcut(_ shortcut: ShortcutOption) {
-            guard let userId = AuthManager.shared.currentUser?.uid else { return }
+                guard let userId = AuthManager.shared.currentUser?.uid else { return }
 
-            let newTrip = TripRecord(
-            route: shortcut.route,
-            direction: shortcut.direction,
-            agency: "TTC", // Default for shortcuts for now, could be stored in ShortcutOption
-            startTime: Date(),
-            startStopName: shortcut.stopName,
-            userId: userId,
-            isSynced: false
-            )
+                let newTrip = TripRecord(
+                    route: shortcut.route,
+                    direction: shortcut.direction,
+                    agency: "TTC", // Default for shortcuts for now, could be stored in ShortcutOption
+                    startTime: Date(),
+                    startStopName: shortcut.stopName,
+                    startLatitude: locationManager.lastLocation?.coordinate.latitude,
+                    startLongitude: locationManager.lastLocation?.coordinate.longitude,
+                    userId: userId,
+                    isSynced: false
+                )
 
-            modelContext.insert(newTrip)
-            try? modelContext.save()
+                modelContext.insert(newTrip)
+                try? modelContext.save()
             }
-    private func endTrip() {
-        guard let trip = activeTrip else { return }
-        
-        let stop = endStopText.trimmingCharacters(in: .whitespaces)
-        trip.endStopName = stop.isEmpty ? nil : stop
-        trip.endTime = Date()
-        
-        // Save locally first
-        try? modelContext.save()
+
+            private func endTrip() {
+                guard let trip = activeTrip else { return }
+
+                let stop = endStopText.trimmingCharacters(in: .whitespaces)
+                trip.endStopName = stop.isEmpty ? nil : stop
+                trip.endTime = Date()
+                trip.endLatitude = locationManager.lastLocation?.coordinate.latitude
+                trip.endLongitude = locationManager.lastLocation?.coordinate.longitude
+
+                // Save locally first
+                try? modelContext.save()
+
         
         // Clear UI
         let tripToSync = trip
