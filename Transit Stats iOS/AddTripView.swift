@@ -12,6 +12,15 @@ struct AddTripView: View {
     // Step 1: waiting at stop
     @State private var stopText = ""
     
+    // OCR & Camera State
+    @State private var showingImagePicker = false
+    @State private var capturedImage: UIImage? = nil
+    @State private var isProcessingOCR = false
+    @State private var detectedRoutes: [String] = []
+    @State private var detectedStops: [String] = []
+    @State private var showingRoutePicker = false
+    @State private var showingStopPicker = false
+    
     private var nearbyHubs: [NearbyHub] {
         guard let location = locationManager.lastLocation else { return [] }
         
@@ -116,6 +125,66 @@ struct AddTripView: View {
         .onDisappear {
             locationManager.stopUpdating()
         }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(image: $capturedImage)
+        }
+        .onChange(of: capturedImage) { _, newValue in
+            if let image = newValue {
+                processCapturedImage(image)
+            }
+        }
+        .confirmationDialog("Select Route", isPresented: $showingRoutePicker, titleVisibility: .visible) {
+            ForEach(detectedRoutes, id: \.self) { route in
+                Button(route) {
+                    routeText = route
+                    advanceToBoard()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Multiple routes detected in the photo.")
+        }
+        .confirmationDialog("Select Stop", isPresented: $showingStopPicker, titleVisibility: .visible) {
+            ForEach(detectedStops, id: \.self) { stop in
+                Button(stop) {
+                    stopText = stop
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Likely stop names found in the photo.")
+        }
+    }
+    
+    private func processCapturedImage(_ image: UIImage) {
+        isProcessingOCR = true
+        VisionOCRManager.shared.processImage(image) { recognizedStrings in
+            DispatchQueue.main.async {
+                let routes = VisionOCRManager.shared.extractRoutes(from: recognizedStrings)
+                let stopNames = VisionOCRManager.shared.extractStopNames(from: recognizedStrings)
+                self.isProcessingOCR = false
+                
+                // Handle Stop Names
+                if stopNames.count == 1 && self.stopText.isEmpty {
+                    self.stopText = stopNames[0]
+                } else if stopNames.count > 1 && self.stopText.isEmpty {
+                    self.detectedStops = stopNames
+                    self.showingStopPicker = true
+                }
+                
+                // Handle Routes
+                if routes.count == 1 {
+                    self.routeText = routes[0]
+                    // If we found a route and a stop name was already set (or just found), advance
+                    if !self.stopText.isEmpty {
+                        self.advanceToBoard()
+                    }
+                } else if routes.count > 1 {
+                    self.detectedRoutes = routes
+                    self.showingRoutePicker = true
+                }
+            }
+        }
     }
 
     // MARK: - Step Views
@@ -141,24 +210,46 @@ struct AddTripView: View {
                         .kerning(1.2)
                         .padding(.horizontal, 28)
 
-                    TextField("e.g. College St at Spadina", text: $stopText)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.vertical, 14)
-                        .padding(.horizontal, 16)
-                        .background(Color.white.opacity(0.06))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(
-                                    stopText.isEmpty ? Color.white.opacity(0.1) : Color.orange.opacity(0.4),
-                                    lineWidth: 1
-                                )
-                        )
-                        .padding(.horizontal, 20)
-                        .autocorrectionDisabled()
-                        .submitLabel(.next)
-                        .onSubmit { advanceToBoard() }
+                    HStack(spacing: 12) {
+                        TextField("e.g. College St at Spadina", text: $stopText)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 16)
+                            .background(Color.white.opacity(0.06))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(
+                                        stopText.isEmpty ? Color.white.opacity(0.1) : Color.orange.opacity(0.4),
+                                        lineWidth: 1
+                                    )
+                            )
+                            .autocorrectionDisabled()
+                            .submitLabel(.next)
+                            .onSubmit { advanceToBoard() }
+                        
+                        Button(action: { showingImagePicker = true }) {
+                            ZStack {
+                                if isProcessingOCR {
+                                    ProgressView().tint(.orange)
+                                } else {
+                                    Image(systemName: "camera.viewfinder")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                            .frame(width: 50, height: 50)
+                            .background(Color.white.opacity(0.06))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
+                        }
+                        .disabled(isProcessingOCR)
+                    }
+                    .padding(.horizontal, 20)
                 }
 
                 // Nearby stop/hub suggestions
@@ -285,24 +376,46 @@ struct AddTripView: View {
                         .kerning(1.2)
                         .padding(.horizontal, 28)
 
-                    TextField("e.g. 506, Line 1, GO Lakeshore", text: $routeText)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.vertical, 14)
-                        .padding(.horizontal, 16)
-                        .background(Color.white.opacity(0.06))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(
-                                    routeText.isEmpty ? Color.white.opacity(0.1) : Color.orange.opacity(0.5),
-                                    lineWidth: 1
-                                )
-                        )
-                        .padding(.horizontal, 20)
-                        .autocorrectionDisabled()
-                        .submitLabel(.done)
-                        .onSubmit { if !routeText.isEmpty { submitTrip() } }
+                    HStack(spacing: 12) {
+                        TextField("e.g. 506, Line 1, GO Lakeshore", text: $routeText)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 16)
+                            .background(Color.white.opacity(0.06))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(
+                                        routeText.isEmpty ? Color.white.opacity(0.1) : Color.orange.opacity(0.5),
+                                        lineWidth: 1
+                                    )
+                            )
+                            .autocorrectionDisabled()
+                            .submitLabel(.done)
+                            .onSubmit { if !routeText.isEmpty { submitTrip() } }
+                        
+                        Button(action: { showingImagePicker = true }) {
+                            ZStack {
+                                if isProcessingOCR {
+                                    ProgressView().tint(.orange)
+                                } else {
+                                    Image(systemName: "camera.viewfinder")
+                                        .font(.system(size: 20))
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                            .frame(width: 50, height: 50)
+                            .background(Color.white.opacity(0.06))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
+                        }
+                        .disabled(isProcessingOCR)
+                    }
+                    .padding(.horizontal, 20)
                 }
                 
                 // Direction Suggestions for manual route entry
