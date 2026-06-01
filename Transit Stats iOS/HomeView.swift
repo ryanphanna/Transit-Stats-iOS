@@ -559,22 +559,30 @@ struct HomeView: View {
     }
     
     private func getShortcutOptions() -> [ShortcutOption] {
+        // Use the new on-device PredictionEngine to rank history
+        let predictions = PredictionEngine.predict(history: completedTrips, stopName: nil)
+        
         var options: [ShortcutOption] = []
         var seen = Set<String>()
         
-        for trip in completedTrips {
-            guard let stopName = trip.startStopName ?? trip.startStopCode else { continue }
-            let key = "\(trip.route)|\(stopName)|\(trip.direction)"
-            
-            if !seen.contains(key) {
-                seen.insert(key)
-                let command = "\(trip.route) \(stopName) \(trip.direction)".trimmingCharacters(in: .whitespaces)
-                options.append(ShortcutOption(
-                    route: trip.route,
-                    stopName: stopName,
-                    direction: trip.direction,
-                    command: command
-                ))
+        for prediction in predictions {
+            // Find the most recent trip matching this route/direction to get the stop name
+            if let trip = completedTrips.first(where: { 
+                $0.route == prediction.route && $0.direction == prediction.direction 
+            }) {
+                guard let stopName = trip.startStopName ?? trip.startStopCode else { continue }
+                let key = "\(prediction.route)|\(stopName)|\(prediction.direction)"
+                
+                if !seen.contains(key) {
+                    seen.insert(key)
+                    let command = "\(prediction.route) \(stopName) \(prediction.direction)".trimmingCharacters(in: .whitespaces)
+                    options.append(ShortcutOption(
+                        route: prediction.route,
+                        stopName: stopName,
+                        direction: prediction.direction,
+                        command: command
+                    ))
+                }
             }
             
             if options.count >= 4 { break }

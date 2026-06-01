@@ -5,6 +5,8 @@ struct AddTripView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var locationManager = LocationManager.shared
+    
+    @Query(sort: \TripRecord.startTime, order: .reverse) private var tripHistory: [TripRecord]
 
     // Step 1: waiting at stop
     @State private var stopText = ""
@@ -16,6 +18,8 @@ struct AddTripView: View {
 
     @State private var step: BoardingStep = .atStop
     @State private var isLoading = false
+    
+    @State private var suggestions: [PredictionEngine.Prediction] = []
 
     // Timestamp when the user first taps "I'm at the stop"
     @State private var waitingSince: Date? = nil
@@ -234,6 +238,37 @@ struct AddTripView: View {
                         .submitLabel(.done)
                         .onSubmit { if !routeText.isEmpty { submitTrip() } }
                 }
+                
+                // Route suggestions based on history
+                if !suggestions.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(suggestions, id: \.route) { pred in
+                                Button(action: {
+                                    routeText = pred.route
+                                    direction = pred.direction
+                                    // Also try to match agency if possible, default to TTC
+                                    if let match = tripHistory.first(where: { $0.route == pred.route }) {
+                                        agency = match.agency
+                                    }
+                                }) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(pred.route)
+                                            .font(.system(size: 13, weight: .bold))
+                                        Text(pred.direction.prefix(1).uppercased())
+                                            .font(.system(size: 9, weight: .semibold))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(routeText == pred.route ? Color.orange : Color.white.opacity(0.1))
+                                    .cornerRadius(10)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
 
                 // Agency picker — compact chips
                 VStack(alignment: .leading, spacing: 8) {
@@ -337,6 +372,10 @@ struct AddTripView: View {
     private func advanceToBoard() {
         guard !stopText.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         waitingSince = Date()
+        
+        // Run prediction
+        suggestions = PredictionEngine.predict(history: tripHistory, stopName: stopText)
+        
         withAnimation { step = .onBoard }
     }
 
