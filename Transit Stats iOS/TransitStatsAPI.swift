@@ -302,7 +302,7 @@ class SyncManager: ObservableObject {
                 let vehicle = data["vehicle"] as? String
                 let source = data["source"] as? String ?? "ios"
                 let isPublic = data["isPublic"] as? Bool ?? false
-                let timezone = data["timezone"] as? String ?? "America/Toronto"
+                let timezone = data["timezone"] as? String ?? TimeZone.current.identifier
                 
                 // Fetch existing SwiftData record
                 let descriptor = FetchDescriptor<TripRecord>(predicate: #Predicate { $0.id == id })

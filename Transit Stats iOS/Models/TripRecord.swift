@@ -44,7 +44,7 @@ final class TripRecord {
         vehicle: String? = nil,
         source: String = "ios",
         isPublic: Bool = false,
-        timezone: String = "America/Toronto",
+        timezone: String = TimeZone.current.identifier,
         userId: String = "",
         isSynced: Bool = false
     ) {
