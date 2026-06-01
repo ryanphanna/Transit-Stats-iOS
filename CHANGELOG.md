@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Hub-Based Stop Suggestions**: Refactored the `AddTripView` logger to group individual boarding platforms into consolidated "Hubs." Users now see a single, verified chip for an intersection (e.g., Spadina / Dundas) instead of multiple scattered suggestions, significantly reducing UI clutter.
+- **Database-Driven Hub Model**: Updated the iOS `Stop` model and sync engine to support the new Firestore `hubId` and `verified` flags, enabling high-confidence matching and verified stop seals.
 - **GPS Data Quality Filtering**: Updated the location capture engine to automatically discard coordinates with poor horizontal accuracy (> 65m). This prevents "noisy" data from subways or tunnels from skewing your trip history and ensures the normalized stops library remains high-quality.
 - **Background GPS Validation**: Implemented silent GPS quality filtering for the HomeView map visualization.
 - **Optimized Data Sync Strategy**: Implemented "Initial Hydration" and incremental syncing. Power users now see their most recent 50 trips instantly, while the rest of their history backfills in the background. Subsequent launches only sync delta changes, significantly reducing battery and data usage.

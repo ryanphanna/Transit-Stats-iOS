@@ -308,9 +308,11 @@ class SyncManager: ObservableObject {
                     let id = doc.documentID
                     let name = data["name"] as? String ?? ""
                     let code = data["code"] as? String
-                    let lat = data["latitude"] as? Double ?? 0
-                    let lon = data["longitude"] as? Double ?? 0
+                    let lat = data["latitude"] as? Double ?? data["lat"] as? Double ?? 0
+                    let lon = data["longitude"] as? Double ?? data["lng"] as? Double ?? 0
                     let agencies = data["agencies"] as? [String] ?? []
+                    let hubId = data["hubId"] as? String
+                    let verified = data["verified"] as? Bool ?? false
                     
                     if lat == 0 || lon == 0 { continue } // Skip stops without coordinates
                     
@@ -318,13 +320,19 @@ class SyncManager: ObservableObject {
                     let existing = try? modelContext.fetch(descriptor).first
                     
                     if let stop = existing {
+                        // Only update if the incoming data has coordinates and the local one doesn't,
+                        // or if the incoming data is from a trusted source (admin/GTFS).
+                        if lat != 0 && lon != 0 {
+                            stop.latitude = lat
+                            stop.longitude = lon
+                        }
                         stop.name = name
                         stop.code = code
-                        stop.latitude = lat
-                        stop.longitude = lon
                         stop.agencies = agencies
+                        stop.hubId = hubId
+                        stop.verified = verified
                     } else {
-                        let newStop = Stop(id: id, name: name, code: code, latitude: lat, longitude: lon, agencies: agencies)
+                        let newStop = Stop(id: id, name: name, code: code, latitude: lat, longitude: lon, agencies: agencies, hubId: hubId, verified: verified)
                         modelContext.insert(newStop)
                     }
                 }

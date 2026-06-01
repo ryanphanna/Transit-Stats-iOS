@@ -12,19 +12,36 @@ struct AddTripView: View {
     // Step 1: waiting at stop
     @State private var stopText = ""
     
-    private var nearbyStops: [Stop] {
+    private var nearbyHubs: [NearbyHub] {
         guard let location = locationManager.lastLocation else { return [] }
         
-        // Find stops within ~500 meters (approx 0.005 degrees)
-        return stops.filter { stop in
+        // 1. Find all stops within 500m
+        let nearbyStops = stops.filter { stop in
             let stopLocation = CLLocation(latitude: stop.latitude, longitude: stop.longitude)
             return stopLocation.distance(from: location) < 500
         }
-        .sorted { stopA, stopB in
-            let locA = CLLocation(latitude: stopA.latitude, longitude: stopA.longitude)
-            let locB = CLLocation(latitude: stopB.latitude, longitude: stopB.longitude)
-            return locA.distance(from: location) < locB.distance(from: location)
+        
+        // 2. Group by hubId (or id if no hubId)
+        var hubGroups: [String: [Stop]] = [:]
+        for stop in nearbyStops {
+            let key = stop.hubId ?? stop.id
+            hubGroups[key, default: []].append(stop)
         }
+        
+        // 3. Map to NearbyHub objects
+        return hubGroups.map { key, stops in
+            let bestStop = stops.first! // For now just take the first one
+            let distance = CLLocation(latitude: bestStop.latitude, longitude: bestStop.longitude).distance(from: location)
+            
+            return NearbyHub(
+                id: key,
+                name: bestStop.name,
+                isVerified: stops.contains(where: { $0.verified }),
+                distance: distance,
+                stops: stops
+            )
+        }
+        .sorted { $0.distance < $1.distance }
     }
 
     // Step 2: boarded — enter route
@@ -144,19 +161,21 @@ struct AddTripView: View {
                         .onSubmit { advanceToBoard() }
                 }
 
-                // Nearby stop suggestions
-                if !nearbyStops.isEmpty {
+                // Nearby stop/hub suggestions
+                if !nearbyHubs.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(nearbyStops.prefix(5)) { stop in
+                            ForEach(nearbyHubs.prefix(5)) { hub in
                                 Button(action: {
-                                    stopText = stop.name
+                                    stopText = hub.name
                                     advanceToBoard()
                                 }) {
                                     HStack(spacing: 6) {
-                                        Image(systemName: "mappin.and.ellipse")
+                                        Image(systemName: hub.isVerified ? "checkmark.seal.fill" : "mappin.and.ellipse")
                                             .font(.system(size: 10))
-                                        Text(stop.name)
+                                            .foregroundColor(hub.isVerified ? .blue : .white.opacity(0.6))
+                                        
+                                        Text(hub.name)
                                             .font(.system(size: 12, weight: .semibold))
                                     }
                                     .padding(.horizontal, 12)
@@ -165,7 +184,7 @@ struct AddTripView: View {
                                     .cornerRadius(12)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                            .stroke(hub.isVerified ? Color.blue.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
                                     )
                                 }
                             }
@@ -498,4 +517,14 @@ struct AddTripView: View {
 
 #Preview {
     AddTripView()
+}
+
+// MARK: - Support Types
+
+struct NearbyHub: Identifiable {
+    let id: String
+    let name: String
+    let isVerified: Bool
+    let distance: Double
+    let stops: [Stop]
 }
