@@ -633,6 +633,10 @@ struct AddTripView: View {
         
         do {
             try modelContext.save()
+            
+            // Start path tracking if enabled
+            locationManager.startPathTracking()
+            
             isLoading = false
             dismiss()
         } catch {

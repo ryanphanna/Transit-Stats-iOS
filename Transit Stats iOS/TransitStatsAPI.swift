@@ -165,7 +165,13 @@ class TransitStatsAPI: ObservableObject {
             "source": trip.source,
             "isPublic": trip.isPublic,
             "timezone": trip.timezone,
-            "userId": trip.userId
+            "userId": trip.userId,
+            "path": trip.path.map { [
+                "lat": $0.lat,
+                "lon": $0.lon,
+                "timestamp": Timestamp(date: $0.timestamp),
+                "speed": $0.speed ?? NSNull()
+            ] }
         ]
         
         try await db.collection("trips").document(trip.id).setData(data)

@@ -581,6 +581,9 @@ struct HomeView: View {
 
                 modelContext.insert(newTrip)
                 try? modelContext.save()
+
+                // Start high-fidelity tracking
+                locationManager.startPathTracking()
             }
 
             private func endTrip() {
@@ -596,9 +599,11 @@ struct HomeView: View {
                     trip.endAccuracy = location.horizontalAccuracy
                 }
 
+                // Capture path data
+                trip.pathData = locationManager.stopPathTracking()
+
                 // Save locally first
                 try? modelContext.save()
-
 
         
         // Clear UI

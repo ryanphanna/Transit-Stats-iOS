@@ -27,6 +27,9 @@ final class TripRecord {
     var userId: String
     var isSynced: Bool
     
+    /// JSON encoded array of TripPathPoint
+    @Attribute(.externalStorage) var pathData: Data?
+    
     init(
         id: String = UUID().uuidString,
         route: String,
@@ -44,15 +47,14 @@ final class TripRecord {
         endLongitude: Double? = nil,
         startAccuracy: Double? = nil,
         endAccuracy: Double? = nil,
-        startHubId: String? = nil,
-        endHubId: String? = nil,
         notes: String? = nil,
         vehicle: String? = nil,
         source: String = "ios",
         isPublic: Bool = false,
         timezone: String = TimeZone.current.identifier,
         userId: String = "",
-        isSynced: Bool = false
+        isSynced: Bool = false,
+        pathData: Data? = nil
     ) {
         self.id = id
         self.route = route
@@ -70,8 +72,6 @@ final class TripRecord {
         self.endLongitude = endLongitude
         self.startAccuracy = startAccuracy
         self.endAccuracy = endAccuracy
-        self.startHubId = startHubId
-        self.endHubId = endHubId
         self.notes = notes
         self.vehicle = vehicle
         self.source = source
@@ -79,10 +79,23 @@ final class TripRecord {
         self.timezone = timezone
         self.userId = userId
         self.isSynced = isSynced
+        self.pathData = pathData
     }
     
     var durationMinutes: Int? {
         guard let endTime = endTime else { return nil }
         return Int(endTime.timeIntervalSince(startTime) / 60)
     }
+    
+    var path: [TripPathPoint] {
+        guard let data = pathData else { return [] }
+        return (try? JSONDecoder().decode([TripPathPoint].self, from: data)) ?? []
+    }
+}
+
+struct TripPathPoint: Codable {
+    let lat: Double
+    let lon: Double
+    let timestamp: Date
+    let speed: Double?
 }

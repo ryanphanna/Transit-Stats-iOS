@@ -372,6 +372,10 @@ struct TripRow: View {
 
 struct SettingsView: View {
     @StateObject private var authManager = AuthManager.shared
+    @StateObject private var locationManager = LocationManager.shared
+    @Query private var profiles: [UserProfile]
+    
+    private var profile: UserProfile? { profiles.first }
     
     var body: some View {
         NavigationStack {
@@ -383,7 +387,7 @@ struct SettingsView: View {
                             .foregroundColor(.blue)
                         
                         VStack(alignment: .leading) {
-                            Text(authManager.currentUser?.email ?? "User")
+                            Text(profile?.nickname ?? authManager.currentUser?.email ?? "User")
                                 .fontWeight(.semibold)
                             Text("ID: \(authManager.currentUser?.uid.prefix(8) ?? "")...")
                                 .font(.caption)
@@ -391,6 +395,21 @@ struct SettingsView: View {
                         }
                     }
                     .padding(.vertical, 4)
+                }
+                
+                if profile?.isAdmin == true {
+                    Section("Lab Features (Admin)") {
+                        Toggle(isOn: $locationManager.isHighFidelityEnabled) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("High Fidelity Location")
+                                    .fontWeight(.medium)
+                                Text("Records full path breadcrumbs during trips. High battery usage.")
+                                    .font(.caption2)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .tint(.orange)
+                    }
                 }
                 
                 Section("App Info") {
