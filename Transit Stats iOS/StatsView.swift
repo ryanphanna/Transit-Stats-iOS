@@ -43,14 +43,14 @@ struct StatsView: View {
                         
                         // Favorite Routes Chart
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Top 5 Favorite Routes")
-                                .font(.headline)
+                            Text("Favorite Routes")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             
                             if routeStats.isEmpty {
                                 Text("No route data available. Completed trips will appear here.")
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.white.opacity(0.3))
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.vertical, 20)
                             } else {
@@ -70,11 +70,11 @@ struct StatsView: View {
                                         .cornerRadius(4)
                                     }
                                 }
-                                .frame(height: 200)
+                                .frame(height: 180)
                             }
                         }
-                        .padding()
-                        .background(Color.white.opacity(0.03))
+                        .padding(20)
+                        .background(Color.white.opacity(0.04))
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
@@ -84,13 +84,13 @@ struct StatsView: View {
                         // Weekly Distribution Chart
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Trips by Weekday")
-                                .font(.headline)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             
                             if trips.isEmpty {
                                 Text("No data available.")
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.white.opacity(0.3))
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.vertical, 20)
                             } else {
@@ -104,11 +104,11 @@ struct StatsView: View {
                                         .cornerRadius(4)
                                     }
                                 }
-                                .frame(height: 200)
+                                .frame(height: 180)
                             }
                         }
-                        .padding()
-                        .background(Color.white.opacity(0.03))
+                        .padding(20)
+                        .background(Color.white.opacity(0.04))
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
@@ -120,33 +120,38 @@ struct StatsView: View {
                     .padding()
                 }
             }
-            .navigationTitle("Analytics")
+            .navigationTitle("Stats")
         }
     }
     
     private func summaryCard(title: String, value: String, icon: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-                    .font(.title2)
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.1))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .foregroundColor(color)
+                        .font(.system(size: 14, weight: .bold))
+                }
                 Spacer()
             }
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
-                    .font(.system(.title2, design: .rounded))
-                    .fontWeight(.bold)
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                 
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(.gray)
+                Text(title.uppercased())
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundColor(.white.opacity(0.4))
+                    .kerning(1)
             }
         }
-        .padding()
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.03))
+        .background(Color.white.opacity(0.04))
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)

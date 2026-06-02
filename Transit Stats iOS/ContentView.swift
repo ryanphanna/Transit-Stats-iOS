@@ -276,9 +276,16 @@ struct TripsHistoryView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(trips) { trip in
-                    TripRow(trip: trip)
+            ZStack {
+                Color(hex: "020617").ignoresSafeArea()
+                
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(trips) { trip in
+                            TripRow(trip: trip)
+                        }
+                    }
+                    .padding()
                 }
             }
             .navigationTitle("Trip History")
@@ -299,78 +306,96 @@ struct TripRow: View {
     let trip: TripRecord
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(trip.route)
-                    .font(.headline)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.15))
-                    .cornerRadius(6)
-                    .foregroundColor(.blue)
-                
-                if !trip.direction.isEmpty {
-                    Text(trip.direction)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(trip.route)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    
+                    if !trip.direction.isEmpty {
+                        Text(trip.direction.uppercased())
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(.white.opacity(0.4))
+                            .kerning(1)
+                    }
                 }
                 
                 Spacer()
                 
                 if let duration = trip.durationMinutes {
-                    Text("\(duration) min")
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                    Text("\(duration)m")
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(6)
                 }
             }
             
-            HStack(spacing: 6) {
-                Image(systemName: "circle.circle")
-                    .foregroundColor(.green)
-                    .font(.caption)
-                Text(trip.startStopName ?? trip.startStopCode ?? "Unknown stop")
-                    .font(.subheadline)
-            }
-            
-            if let endName = trip.endStopName {
-                HStack(spacing: 6) {
-                    Image(systemName: "circle.circle.fill")
-                        .foregroundColor(.red)
-                        .font(.caption)
-                    Text(endName)
-                        .font(.subheadline)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                    Text(trip.startStopName ?? trip.startStopCode ?? "Unknown origin")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                
+                if let endName = trip.endStopName {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 6, height: 6)
+                        Text(endName)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                 }
             }
+            
+            Divider().background(Color.white.opacity(0.05))
             
             HStack {
                 Text(trip.startTime.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption2)
-                    .foregroundColor(.gray)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.3))
                 
                 Spacer()
                 
-                if let notes = trip.notes, !notes.isEmpty {
-                    Image(systemName: "note.text")
-                        .foregroundColor(.yellow)
-                        .font(.caption)
-                }
-                
-                if trip.isSynced {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                        .font(.caption)
-                } else {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .foregroundColor(.orange)
-                        .font(.caption)
+                HStack(spacing: 12) {
+                    if let notes = trip.notes, !notes.isEmpty {
+                        Image(systemName: "note.text")
+                            .foregroundColor(.yellow.opacity(0.6))
+                            .font(.system(size: 12))
+                    }
+                    
+                    if trip.isSynced {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green.opacity(0.6))
+                            .font(.system(size: 12))
+                    } else {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .foregroundColor(.orange.opacity(0.6))
+                            .font(.system(size: 12))
+                    }
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .background(Color.white.opacity(0.04))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
     }
 }
 
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var locationManager = LocationManager.shared
     @Query private var profiles: [UserProfile]
@@ -389,7 +414,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading) {
                             Text(profile?.nickname ?? authManager.currentUser?.email ?? "User")
                                 .fontWeight(.semibold)
-                            Text("ID: \(authManager.currentUser?.uid.prefix(8) ?? "")...")
+                            Text("Account ID: \(authManager.currentUser?.uid.prefix(4) ?? "")••••\(authManager.currentUser?.uid.suffix(4) ?? "")")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
@@ -439,6 +464,14 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
         }
     }
 }

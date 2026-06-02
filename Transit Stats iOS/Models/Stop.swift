@@ -17,8 +17,8 @@ final class Stop {
         self.id = id
         self.name = name
         self.code = code
-        self.latitude = lat
-        self.longitude = lon
+        self.latitude = latitude
+        self.longitude = longitude
         self.agencies = agencies
         self.hubId = hubId
         self.verified = verified

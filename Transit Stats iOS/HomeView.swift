@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import Combine
 import MapKit
+import FirebaseAuth
 
 // Simple Line shape helper for the timeline connection
 struct Line: Shape {
@@ -31,6 +32,7 @@ struct HomeView: View {
     @State private var alertMessage = ""
     @State private var isShowingAddTripSheet = false
     @State private var isShowingSettingsSheet = false
+    @State private var isShowingProfileSheet = false
     
     // Map State
     @State private var cameraPosition: MapCameraPosition = .automatic
@@ -56,11 +58,14 @@ struct HomeView: View {
         }
         
         var markers: [TripMarker] = hubs.map { name, data in
-            TripMarker(
+            // Try to find pretty name from hubsLibrary
+            let hubName = hubsLibrary.first(where: { $0.id == name })?.name ?? name
+            
+            return TripMarker(
                 id: name,
                 coordinate: CLLocationCoordinate2D(latitude: data.lat, longitude: data.lon),
                 count: data.count,
-                label: name,
+                label: hubName,
                 route: data.route
             )
         }
@@ -101,7 +106,7 @@ struct HomeView: View {
                 
                 UserAnnotation()
             }
-            .mapStyle(.standard(emphasis: .low, pointsOfInterest: .excludingAll))
+            .mapStyle(.standard)
             .onAppear {
                 updateCameraPosition()
             }
@@ -215,12 +220,12 @@ struct HomeView: View {
         }
         .sheet(isPresented: $isShowingAddTripSheet) {
             AddTripView()
+        }
         .sheet(isPresented: $isShowingSettingsSheet) {
             SettingsView()
         }
         .sheet(isPresented: $isShowingProfileSheet) {
             ProfileView()
-        }
         }
 
         .alert("API Error", isPresented: Binding(
@@ -236,123 +241,117 @@ struct HomeView: View {
     // MARK: - Views
     
     private func activeTripCard(_ trip: TripRecord) -> some View {
-        VStack(spacing: 18) {
-            // Status Row (App in the Air uppercase bold style)
+        VStack(spacing: 20) {
+            // Status Row
             HStack {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 6, height: 6)
-                    Text("IN TRANSIT")
-                        .font(.system(size: 9, weight: .black))
+                    Text("In Transit")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundColor(.orange)
-                        .kerning(1.5)
+                        .kerning(0.5)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(Color.orange.opacity(0.12))
-                .cornerRadius(4)
+                .cornerRadius(20)
                 
                 Spacer()
                 
-                Text(trip.agency.uppercased())
+                Text(trip.agency)
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.gray)
+                    .foregroundColor(.white.opacity(0.3))
                     .kerning(1)
             }
             
-            // Route Header Board
+            // Route Header
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(trip.route)
-                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                     if !trip.direction.isEmpty {
                         Text(trip.direction.uppercased())
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.gray)
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundColor(.white.opacity(0.4))
                             .kerning(0.8)
                     }
                 }
                 Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("ELAPSED")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.white.opacity(0.3))
+                        .kerning(1)
+                    Text(timeElapsed)
+                        .font(.system(size: 16, weight: .bold, design: .monospaced))
+                        .foregroundColor(.orange)
+                }
             }
             
-            // Boarding Pass / Travel Timeline
-            HStack(spacing: 12) {
-                // Origin Stop
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("BOARDED")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.gray)
-                        .kerning(1)
-                    Text(trip.startStopName ?? trip.startStopCode ?? "Unknown stop")
-                        .font(.system(size: 13, weight: .semibold))
+            // Timeline
+            HStack(spacing: 0) {
+                // Origin
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Origin")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white.opacity(0.3))
+                    Text(trip.startStopName ?? trip.startStopCode ?? "Unknown")
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                // Flight/Trip Timeline Connection Graphic
-                HStack(spacing: 4) {
+                // Connection Graphic
+                HStack(spacing: 6) {
                     Circle().fill(Color.blue).frame(width: 5, height: 5)
                     Line()
-                        .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [3]))
+                        .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [4]))
                         .frame(height: 1)
-                        .foregroundColor(.blue.opacity(0.4))
+                        .foregroundColor(.white.opacity(0.15))
                     Image(systemName: "tram.fill")
                         .font(.system(size: 12))
                         .foregroundColor(.blue)
                     Line()
-                        .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [3]))
+                        .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [4]))
                         .frame(height: 1)
-                        .foregroundColor(.blue.opacity(0.4))
-                    Circle().fill(Color.white.opacity(0.3)).frame(width: 5, height: 5)
+                        .foregroundColor(.white.opacity(0.15))
+                    Circle().fill(Color.white.opacity(0.2)).frame(width: 5, height: 5)
                 }
-                .frame(width: 70)
+                .frame(width: 80)
                 
-                // Destination Stop (Pending input)
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("DESTINATION")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.gray)
-                        .kerning(1)
-                    Text(endStopText.isEmpty ? "SELECT EXIT" : endStopText)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(endStopText.isEmpty ? .gray : .white)
+                // Destination
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text("Destination")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white.opacity(0.3))
+                    Text(endStopText.isEmpty ? "..." : endStopText)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(endStopText.isEmpty ? .white.opacity(0.2) : .white)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             
-            // Duration Status Panel
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("TIME ELAPSED")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.gray)
-                        .kerning(1)
-                    Text(timeElapsed.uppercased())
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundColor(.orange)
-                }
-                Spacer()
-            }
+            Divider().background(Color.white.opacity(0.06))
             
-            Divider().background(Color.white.opacity(0.08))
-            
-            // End trip input & buttons
+            // End trip input
             VStack(spacing: 12) {
-                TextField("Enter Exit Stop Code or Name", text: $endStopText)
-                    .font(.system(size: 13, weight: .medium))
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 12)
+                TextField("Enter exit stop name or code", text: $endStopText)
+                    .font(.system(size: 14, weight: .medium))
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
                     .background(Color.white.opacity(0.05))
-                    .cornerRadius(8)
+                    .cornerRadius(12)
                     .foregroundColor(.white)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
                     )
                 
                 HStack(spacing: 12) {
@@ -362,18 +361,17 @@ struct HomeView: View {
                             if api.isSendingCommand {
                                 ProgressView().tint(.white)
                             } else {
-                                Image(systemName: "checkmark.circle.fill")
                                 Text("COMPLETE JOURNEY")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .kerning(0.8)
+                                    .font(.system(size: 12, weight: .black))
+                                    .kerning(1)
                             }
                             Spacer()
                         }
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 14)
                         .background(Color.orange)
                         .foregroundColor(.white)
-                        .cornerRadius(8)
-                        .shadow(color: Color.orange.opacity(0.25), radius: 6, x: 0, y: 3)
+                        .cornerRadius(12)
+                        .shadow(color: Color.orange.opacity(0.2), radius: 8, x: 0, y: 4)
                     }
                     .disabled(api.isSendingCommand)
                     
@@ -381,82 +379,81 @@ struct HomeView: View {
                         Button("Forgot to End", role: .none, action: forgotTrip)
                         Button("Discard Trip", role: .destructive, action: discardTrip)
                     } label: {
-                        Image(systemName: "ellipsis.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(.gray)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white.opacity(0.6))
+                            .frame(width: 48, height: 48)
                             .background(Color.white.opacity(0.06))
-                            .cornerRadius(8)
+                            .cornerRadius(12)
                     }
                 }
             }
         }
-        .padding(20)
-        .background(Color(hex: "0d1527").opacity(0.9))
-        .cornerRadius(18)
+        .padding(24)
+        .background(Color(hex: "0d1527"))
+        .cornerRadius(24)
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
     }
     
     private var readyStateCard: some View {
-        VStack(spacing: 18) {
-            // Flight Board Style Status Line
+        VStack(alignment: .leading, spacing: 20) {
             HStack {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.gray)
+                        .fill(Color.white.opacity(0.2))
                         .frame(width: 6, height: 6)
-                    Text("NO ACTIVE TRIP")
-                        .font(.system(size: 9, weight: .black))
-                        .foregroundColor(.gray)
-                        .kerning(1.5)
+                    Text("Standby")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.4))
+                        .kerning(0.5)
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(Color.white.opacity(0.06))
-                .cornerRadius(4)
+                .cornerRadius(20)
                 
                 Spacer()
             }
             
             VStack(alignment: .leading, spacing: 6) {
                 Text("Ready to go?")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                 
-                Text("Tap below when you're heading to your stop.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray)
+                Text("Log your next commute or transit journey to keep your stats up to date.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.white.opacity(0.4))
                     .lineSpacing(2)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             
             Button(action: { isShowingAddTripSheet = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "tram.fill")
-                        .font(.system(size: 12))
-                    Text("Start Trip")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 14))
+                    Text("START NEW TRIP")
+                        .font(.system(size: 12, weight: .black))
+                        .kerning(1)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
+                .padding(.vertical, 16)
                 .background(LinearGradient(colors: [Color.orange, Color(hex: "ff6b35")], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .foregroundColor(.white)
-                .cornerRadius(10)
-                .shadow(color: Color.orange.opacity(0.25), radius: 8, x: 0, y: 4)
+                .cornerRadius(14)
+                .shadow(color: Color.orange.opacity(0.2), radius: 10, x: 0, y: 5)
             }
         }
-        .padding(20)
-        .background(Color(hex: "0d1527").opacity(0.9))
-        .cornerRadius(18)
+        .padding(24)
+        .background(Color(hex: "0d1527"))
+        .cornerRadius(24)
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
     }
+
     private var repliesPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -503,108 +500,107 @@ struct HomeView: View {
             let shortcuts = getShortcutOptions()
             
             if shortcuts.isEmpty {
-            Text("Your regular routes will appear here once you log a few trips.")
-            .font(.system(size: 11))
-            .foregroundColor(.gray)
-            .padding(.top, 2)
+                Text("Your regular routes will appear here once you log a few trips.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.gray)
+                    .padding(.top, 2)
             } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(shortcuts, id: \.command) { shortcut in
-                    Button(action: { startShortcut(shortcut) }) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(shortcut.route)
-                                .font(.system(size: 10, weight: .black))
-                                .foregroundColor(.orange)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
-                                .background(Color.orange.opacity(0.15))
-                                .cornerRadius(4)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(shortcuts, id: \.command) { shortcut in
+                            Button(action: { startShortcut(shortcut) }) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(shortcut.route)
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(.orange)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(Color.orange.opacity(0.15))
+                                        .cornerRadius(4)
 
-                            Text(shortcut.stopName)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(.white)
-                                .lineLimit(1)
+                                    Text(shortcut.stopName)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
 
-                            if !shortcut.direction.isEmpty {
-                                Text(shortcut.direction.uppercased())
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundColor(.gray)
+                                    if !shortcut.direction.isEmpty {
+                                        Text(shortcut.direction.uppercased())
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                                .padding(12)
+                                .frame(width: 125, alignment: .leading)
+                                .background(Color.black.opacity(0.25))
+                                .cornerRadius(10)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
                             }
                         }
-                        .padding(12)
-                        .frame(width: 125, alignment: .leading)
-                        .background(Color.black.opacity(0.25))
-                        .cornerRadius(10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        )
                     }
                 }
             }
-            }
-            }
-            }
-            }
+        }
+    }
 
-            // MARK: - Actions
+    // MARK: - Actions
 
-            private func updateTimer(for trip: TripRecord) {
-            let diff = Date().timeIntervalSince(trip.startTime)
-            let mins = Int(diff / 60)
-            if mins < 1 {
+    private func updateTimer(for trip: TripRecord) {
+        let diff = Date().timeIntervalSince(trip.startTime)
+        let mins = Int(diff / 60)
+        if mins < 1 {
             timeElapsed = "0 min"
-            } else {
+        } else {
             timeElapsed = "\(mins) min"
-            }
-            }
+        }
+    }
 
-            private func startShortcut(_ shortcut: ShortcutOption) {
-                guard let userId = AuthManager.shared.currentUser?.uid else { return }
+    private func startShortcut(_ shortcut: ShortcutOption) {
+        guard let userId = AuthManager.shared.currentUser?.uid else { return }
 
-                let location = locationManager.lastLocation
-                let useLocation = locationManager.isAccuracySufficient
+        let location = locationManager.lastLocation
+        let useLocation = locationManager.isAccuracySufficient
 
-                let newTrip = TripRecord(
-                    route: shortcut.route,
-                    direction: shortcut.direction,
-                    agency: "TTC", // Default for shortcuts for now, could be stored in ShortcutOption
-                    startTime: Date(),
-                    startStopName: shortcut.stopName,
-                    startLatitude: useLocation ? location?.coordinate.latitude : nil,
-                    startLongitude: useLocation ? location?.coordinate.longitude : nil,
-                    startAccuracy: useLocation ? location?.horizontalAccuracy : nil,
-                    userId: userId,
-                    isSynced: false
-                )
+        let newTrip = TripRecord(
+            route: shortcut.route,
+            direction: shortcut.direction,
+            agency: "TTC", // Default for shortcuts for now, could be stored in ShortcutOption
+            startTime: Date(),
+            startStopName: shortcut.stopName,
+            startLatitude: useLocation ? location?.coordinate.latitude : nil,
+            startLongitude: useLocation ? location?.coordinate.longitude : nil,
+            startAccuracy: useLocation ? location?.horizontalAccuracy : nil,
+            userId: userId,
+            isSynced: false
+        )
 
-                modelContext.insert(newTrip)
-                try? modelContext.save()
+        modelContext.insert(newTrip)
+        try? modelContext.save()
 
-                // Start high-fidelity tracking
-                locationManager.startPathTracking()
-            }
+        // Start high-fidelity tracking
+        locationManager.startPathTracking()
+    }
 
-            private func endTrip() {
-                guard let trip = activeTrip else { return }
+    private func endTrip() {
+        guard let trip = activeTrip else { return }
 
-                let stop = endStopText.trimmingCharacters(in: .whitespaces)
-                trip.endStopName = stop.isEmpty ? nil : stop
-                trip.endTime = Date()
+        let stop = endStopText.trimmingCharacters(in: .whitespaces)
+        trip.endStopName = stop.isEmpty ? nil : stop
+        trip.endTime = Date()
 
-                if locationManager.isAccuracySufficient, let location = locationManager.lastLocation {
-                    trip.endLatitude = location.coordinate.latitude
-                    trip.endLongitude = location.coordinate.longitude
-                    trip.endAccuracy = location.horizontalAccuracy
-                }
+        if locationManager.isAccuracySufficient, let location = locationManager.lastLocation {
+            trip.endLatitude = location.coordinate.latitude
+            trip.endLongitude = location.coordinate.longitude
+            trip.endAccuracy = location.horizontalAccuracy
+        }
 
-                // Capture path data
-                trip.pathData = locationManager.stopPathTracking()
+        // Capture path data
+        trip.pathData = locationManager.stopPathTracking()
 
-                // Save locally first
-                try? modelContext.save()
-
+        // Save locally first
+        try? modelContext.save()
         
         // Clear UI
         let tripToSync = trip
@@ -769,10 +765,6 @@ struct HubView: View {
     private func scaleForCount(_ count: Int) -> CGFloat {
         if marker.isActive { return 1.1 }
         // Scale hubs slightly based on frequency (1x to 1.5x)
-        return min(1.0 + CGFloat(count - 1) * 0.05, 1.5)
-    }
-}
-cale hubs slightly based on frequency (1x to 1.5x)
         return min(1.0 + CGFloat(count - 1) * 0.05, 1.5)
     }
 }

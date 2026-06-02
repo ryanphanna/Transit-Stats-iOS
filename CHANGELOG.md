@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Premium UI Redesign**: Overhauled the entire app interface to achieve a cohesive, high-end "in-between" aesthetic (blending Transit App's bold clarity with Flighty's elegance).
+- **Unified Visual Identity**: Standardized the deep navy background across all tabs and replaced default iOS lists with custom, card-based ScrollViews for a modern look.
+- **Streamlined Add Trip Flow**: Redesigned the boarding step to focus on route entry and prediction chips, hiding secondary agency/direction selectors behind an advanced toggle to reduce form overload.
+- **Polished Boarding Pass Aesthetic**: Refined the Home screen's active trip card with better font weights and a cleaner Origin-to-Destination timeline.
+- **Improved Sheet Navigation**: Added explicit "Done" buttons to the Settings and Profile sheets for clearer dismissal.
+- **Enhanced Privacy Display**: Replaced raw, confusing user IDs in Settings with masked "Account ID" strings.
+- **Consistent Terminology**: Renamed "Analytics" to "Stats" throughout the app for consistent branding.
+
 ### Added
 - **High-Fidelity Path Tracking (Admin Only)**: Implemented background GPS 'breadcrumb' tracking for active trips. When enabled via the new "Lab Features" setting, the app records a continuous path of coordinates and speed data. This enables high-precision distance and speed analytics while preserving battery for regular users via a passive-only default mode.
 - **Full Offline Mirroring**: Implemented comprehensive offline caching for user profiles, station hubs, and prediction accuracy stats. The app now persists your preferred agency, canonical station names, and AI performance metrics locally, ensuring a fully personalized experience even without a network connection.

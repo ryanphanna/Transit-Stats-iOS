@@ -11,48 +11,53 @@ struct ProfileView: View {
     private var stats: PredictionAccuracy? { accuracies.first }
     
     var body: some View {
-        ZStack {
-            Color(hex: "020617").ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 32) {
-                    // Header
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(profile?.nickname ?? "Transit Card")
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                            Text(profile?.isPremium == true ? "Premium System Member" : "Your transit career at a glance.")
-                                .font(.system(size: 14))
-                                .foregroundColor(profile?.isPremium == true ? .orange : .white.opacity(0.5))
+        NavigationStack {
+            ZStack {
+                Color(hex: "020617").ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 32) {
+                        // Header
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(profile?.nickname ?? "Transit Card")
+                                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                Text(profile?.isPremium == true ? "Premium System Member" : "Your transit career at a glance.")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(profile?.isPremium == true ? .orange : .white.opacity(0.5))
+                            }
+                            Spacer()
                         }
-                        Spacer()
-                        Button(action: { dismiss() }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(.white.opacity(0.2))
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-                    
-                    // The Transit Card
-                    TransitCard(trips: trips, profile: profile)
-                    
-                    // Detailed Stats
-                    VStack(spacing: 16) {
-                        statRow(label: "Total Trips", value: "\(trips.count)", icon: "tram.fill", color: .blue)
-                        statRow(label: "Unique Routes", value: "\(uniqueRoutesCount())", icon: "map.fill", color: .orange)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
                         
-                        if let v5Acc = stats?.v5Accuracy, v5Acc > 0 {
-                            statRow(label: "AI Accuracy", value: String(format: "%.1f%%", v5Acc * 100), icon: "brain.head.profile", color: .purple)
-                        }
+                        // The Transit Card
+                        TransitCard(trips: trips, profile: profile)
                         
-                        statRow(label: "Transit Rank", value: calculateRank(), icon: "star.fill", color: .yellow)
+                        // Detailed Stats
+                        VStack(spacing: 16) {
+                            statRow(label: "Total Trips", value: "\(trips.count)", icon: "tram.fill", color: .blue)
+                            statRow(label: "Unique Routes", value: "\(uniqueRoutesCount())", icon: "map.fill", color: .orange)
+                            
+                            if let v5Acc = stats?.v5Accuracy, v5Acc > 0 {
+                                statRow(label: "AI Accuracy", value: String(format: "%.1f%%", v5Acc * 100), icon: "brain.head.profile", color: .purple)
+                            }
+                            
+                            statRow(label: "Transit Rank", value: calculateRank(), icon: "star.fill", color: .yellow)
+                        }
+                        .padding(.horizontal, 24)
+                        
+                        Spacer(minLength: 50)
                     }
-                    .padding(.horizontal, 24)
-                    
-                    Spacer(minLength: 50)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
                 }
             }
         }

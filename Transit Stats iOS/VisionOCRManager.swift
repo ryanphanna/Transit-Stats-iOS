@@ -50,6 +50,8 @@ class VisionOCRManager {
         .reduce(into: [String]()) { unique, route in
             if !unique.contains(route) { unique.append(route) }
         }
+    }
+    
     /// Extracts likely stop names from a list of recognized strings.
     func extractStopNames(from strings: [String]) -> [String] {
         // Look for strings that look like transit stops:

@@ -1,4 +1,7 @@
 import SwiftUI
+import SwiftData
+import CoreLocation
+import FirebaseAuth
 
 struct AddTripView: View {
     @Environment(\.dismiss) private var dismiss
@@ -63,6 +66,7 @@ struct AddTripView: View {
 
     @State private var step: BoardingStep = .atStop
     @State private var isLoading = false
+    @State private var showingAdvancedOptions = false
     
     @State private var suggestions: [PredictionEngine.Prediction] = []
 
@@ -124,6 +128,11 @@ struct AddTripView: View {
         .onAppear {
             locationManager.requestPermission()
             locationManager.startUpdating()
+            
+            // Set default agency from profile
+            if let defaultAg = profile?.defaultAgency {
+                self.agency = defaultAg
+            }
         }
         .onDisappear {
             locationManager.stopUpdating()
@@ -262,7 +271,6 @@ struct AddTripView: View {
                             ForEach(nearbyHubs.prefix(5)) { hub in
                                 Button(action: {
                                     stopText = hub.name
-                                    selectedHubId = hub.id
                                     advanceToBoard()
                                 }) {
                                     HStack(spacing: 6) {
@@ -346,10 +354,10 @@ struct AddTripView: View {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 7, height: 7)
-                    Text("You're on board!")
-                        .font(.system(size: 12, weight: .black))
+                    Text("YOU'RE ON BOARD!")
+                        .font(.system(size: 11, weight: .black))
                         .foregroundColor(.orange)
-                        .kerning(1)
+                        .kerning(1.5)
                 }
 
                 Text("Which route did you board?")
@@ -372,7 +380,7 @@ struct AddTripView: View {
 
             VStack(spacing: 14) {
                 // Route input
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("ROUTE")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(Color.white.opacity(0.35))
@@ -421,22 +429,45 @@ struct AddTripView: View {
                     .padding(.horizontal, 20)
                 }
                 
-                // Direction Suggestions for manual route entry
-                if !routeText.isEmpty && direction.isEmpty {
-                    let dirPredictions = PredictionEngine.predict(history: tripHistory, stopName: stopText)
-                        .filter { $0.route == routeText }
-                    
-                    if !dirPredictions.isEmpty {
+                // Route suggestions based on history
+                if !suggestions.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("SUGGESTED FOR THIS STOP")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(Color.white.opacity(0.3))
+                            .kerning(1)
+                            .padding(.horizontal, 28)
+                            
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(dirPredictions, id: \.direction) { pred in
-                                    Button(action: { direction = pred.direction }) {
-                                        Text(pred.direction)
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 6)
-                                            .background(Color.white.opacity(0.1))
-                                            .cornerRadius(8)
+                            HStack(spacing: 10) {
+                                ForEach(suggestions, id: \.route) { pred in
+                                    Button(action: {
+                                        routeText = pred.route
+                                        direction = pred.direction
+                                        if let match = tripHistory.first(where: { $0.route == pred.route }) {
+                                            agency = match.agency
+                                        }
+                                    }) {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(pred.route)
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundColor(routeText == pred.route ? .white : .orange)
+                                            
+                                            if !pred.direction.isEmpty {
+                                                Text(pred.direction.uppercased())
+                                                    .font(.system(size: 8, weight: .black))
+                                                    .foregroundColor(routeText == pred.route ? .white.opacity(0.8) : .white.opacity(0.4))
+                                                    .kerning(0.5)
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                        .background(routeText == pred.route ? Color.orange : Color.white.opacity(0.08))
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(routeText == pred.route ? Color.clear : Color.white.opacity(0.05), lineWidth: 1)
+                                        )
                                     }
                                 }
                             }
@@ -444,71 +475,85 @@ struct AddTripView: View {
                         }
                     }
                 }
-                
-                // Route suggestions based on history
-                if !suggestions.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(suggestions, id: \.route) { pred in
-                                Button(action: {
-                                    routeText = pred.route
-                                    direction = pred.direction
-                                    // Also try to match agency if possible, default to TTC
-                                    if let match = tripHistory.first(where: { $0.route == pred.route }) {
-                                        agency = match.agency
-                                    }
-                                    
-                                    // If we have a predicted direction, prioritize it
-                                    if !pred.direction.isEmpty {
-                                        direction = pred.direction
-                                    }
-                                }) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(pred.route)
-                                            .font(.system(size: 13, weight: .bold))
-                                        Text(pred.direction.prefix(1).uppercased())
-                                            .font(.system(size: 9, weight: .semibold))
-                                            .foregroundColor(.white.opacity(0.6))
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(routeText == pred.route ? Color.orange : Color.white.opacity(0.1))
-                                    .cornerRadius(10)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 20)
+
+                // Advanced Options Toggle
+                Button(action: { withAnimation { showingAdvancedOptions.toggle() } }) {
+                    HStack {
+                        Text(showingAdvancedOptions ? "Hide Details" : "Add Direction & Agency")
+                            .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: showingAdvancedOptions ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 9))
                     }
+                    .foregroundColor(.white.opacity(0.35))
+                    .padding(.top, 4)
                 }
+                .frame(maxWidth: .infinity)
 
-                // Agency picker — compact chips
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("AGENCY")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(Color.white.opacity(0.35))
-                        .kerning(1.2)
-                        .padding(.horizontal, 28)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(agencies, id: \.self) { ag in
-                                Button(action: { agency = ag }) {
-                                    Text(ag)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 7)
-                                        .background(agency == ag ? Color.orange : Color.white.opacity(0.07))
-                                        .foregroundColor(agency == ag ? .white : Color.white.opacity(0.5))
-                                        .cornerRadius(20)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 20)
-                                                .stroke(agency == ag ? Color.clear : Color.white.opacity(0.1), lineWidth: 1)
-                                        )
+                if showingAdvancedOptions {
+                    VStack(spacing: 16) {
+                        // Direction Suggestions for manual route entry
+                        if !routeText.isEmpty {
+                            let dirPredictions = PredictionEngine.predict(history: tripHistory, stopName: stopText)
+                                .filter { $0.route == routeText }
+                            
+                            if !dirPredictions.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("DIRECTION")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(Color.white.opacity(0.35))
+                                        .kerning(1.2)
+                                        .padding(.horizontal, 8)
+                                        
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            ForEach(dirPredictions, id: \.direction) { pred in
+                                                Button(action: { direction = pred.direction }) {
+                                                    Text(pred.direction)
+                                                        .font(.system(size: 11, weight: .semibold))
+                                                        .padding(.horizontal, 12)
+                                                        .padding(.vertical, 8)
+                                                        .background(direction == pred.direction ? Color.blue : Color.white.opacity(0.1))
+                                                        .cornerRadius(8)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                                .animation(.easeInOut(duration: 0.15), value: agency)
+                                .padding(.horizontal, 20)
+                                .transition(.move(edge: .top).combined(with: .opacity))
                             }
                         }
-                        .padding(.horizontal, 20)
+                        
+                        // Agency picker
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("AGENCY")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color.white.opacity(0.35))
+                                .kerning(1.2)
+                                .padding(.horizontal, 28)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(agencies, id: \.self) { ag in
+                                        Button(action: { agency = ag }) {
+                                            Text(ag)
+                                                .font(.system(size: 11, weight: .semibold))
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 7)
+                                                .background(agency == ag ? Color.orange : Color.white.opacity(0.07))
+                                                .foregroundColor(agency == ag ? .white : Color.white.opacity(0.5))
+                                                .cornerRadius(20)
+                                                .overlay(
+                                                    RoundedRectangle(cornerRadius: 20)
+                                                        .stroke(agency == ag ? Color.clear : Color.white.opacity(0.1), lineWidth: 1)
+                                                )
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
             }
@@ -522,8 +567,9 @@ struct AddTripView: View {
                     } else {
                         Image(systemName: "tram.fill")
                             .font(.system(size: 14))
-                        Text("Start Trip")
-                            .font(.system(size: 15, weight: .bold))
+                        Text("START TRIP")
+                            .font(.system(size: 13, weight: .black))
+                            .kerning(1)
                     }
                     Spacer()
                 }
@@ -539,6 +585,7 @@ struct AddTripView: View {
             }
             .disabled(isLoading || routeText.trimmingCharacters(in: .whitespaces).isEmpty)
             .padding(.horizontal, 20)
+            .padding(.top, 8)
             .animation(.easeInOut(duration: 0.2), value: routeText.isEmpty)
 
             // Back button
@@ -546,7 +593,7 @@ struct AddTripView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 11))
-                    Text("Back")
+                    Text("Back to Stop")
                         .font(.system(size: 12))
                 }
                 .foregroundColor(Color.white.opacity(0.3))
@@ -603,15 +650,6 @@ struct AddTripView: View {
 
         let stop = stopText.trimmingCharacters(in: .whitespaces)
         
-        // Try to resolve hubId if not already set (e.g. from manual entry)
-        var hubId = selectedHubId
-        if hubId == nil && !stop.isEmpty {
-            hubId = stops.first(where: { 
-                $0.name.lowercased() == stop.lowercased() || 
-                ($0.code != nil && $0.code == stop) 
-            })?.hubId
-        }
-        
         let location = locationManager.lastLocation
         let useLocation = locationManager.isAccuracySufficient
         
@@ -624,7 +662,6 @@ struct AddTripView: View {
             startLatitude: useLocation ? location?.coordinate.latitude : nil,
             startLongitude: useLocation ? location?.coordinate.longitude : nil,
             startAccuracy: useLocation ? location?.horizontalAccuracy : nil,
-            startHubId: hubId,
             userId: userId,
             isSynced: false
         )
@@ -646,20 +683,12 @@ struct AddTripView: View {
     }
 }
 
-#Preview {
-    AddTripView()
-}
-
 // MARK: - Support Types
 
 struct NearbyHub: Identifiable {
     let id: String
     let name: String
     let isVerified: Bool
-    let distance: Double
-    let stops: [Stop]
-}
-ified: Bool
     let distance: Double
     let stops: [Stop]
 }

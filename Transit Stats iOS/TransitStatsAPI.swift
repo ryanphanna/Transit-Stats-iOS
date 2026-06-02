@@ -148,20 +148,18 @@ class TransitStatsAPI: ObservableObject {
             "agency": trip.agency,
             "startTime": Timestamp(date: trip.startTime),
             "endTime": trip.endTime != nil ? Timestamp(date: trip.endTime!) : NSNull(),
-            "startStopCode": trip.startStopCode ?? NSNull(),
-            "startStopName": trip.startStopName ?? NSNull(),
-            "endStopCode": trip.endStopCode ?? NSNull(),
-            "endStopName": trip.endStopName ?? NSNull(),
-            "startLatitude": trip.startLatitude ?? NSNull(),
-            "startLongitude": trip.startLongitude ?? NSNull(),
-            "endLatitude": trip.endLatitude ?? NSNull(),
-            "endLongitude": trip.endLongitude ?? NSNull(),
-            "startAccuracy": trip.startAccuracy ?? NSNull(),
-            "endAccuracy": trip.endAccuracy ?? NSNull(),
-            "startHubId": trip.startHubId ?? NSNull(),
-            "endHubId": trip.endHubId ?? NSNull(),
-            "notes": trip.notes ?? NSNull(),
-            "vehicle": trip.vehicle ?? NSNull(),
+            "startStopCode": (trip.startStopCode as Any) ?? NSNull(),
+            "startStopName": (trip.startStopName as Any) ?? NSNull(),
+            "endStopCode": (trip.endStopCode as Any) ?? NSNull(),
+            "endStopName": (trip.endStopName as Any) ?? NSNull(),
+            "startLatitude": (trip.startLatitude as Any) ?? NSNull(),
+            "startLongitude": (trip.startLongitude as Any) ?? NSNull(),
+            "endLatitude": (trip.endLatitude as Any) ?? NSNull(),
+            "endLongitude": (trip.endLongitude as Any) ?? NSNull(),
+            "startAccuracy": (trip.startAccuracy as Any) ?? NSNull(),
+            "endAccuracy": (trip.endAccuracy as Any) ?? NSNull(),
+            "notes": (trip.notes as Any) ?? NSNull(),
+            "vehicle": (trip.vehicle as Any) ?? NSNull(),
             "source": trip.source,
             "isPublic": trip.isPublic,
             "timezone": trip.timezone,
@@ -170,7 +168,7 @@ class TransitStatsAPI: ObservableObject {
                 "lat": $0.lat,
                 "lon": $0.lon,
                 "timestamp": Timestamp(date: $0.timestamp),
-                "speed": $0.speed ?? NSNull()
+                "speed": ($0.speed as Any) ?? NSNull()
             ] }
         ]
         
@@ -216,11 +214,18 @@ class SyncManager: ObservableObject {
                 }
                 
                 Task { @MainActor in
-                    self?.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
+                    guard let self = self else { return }
+                    self.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
                     // Update sync timestamp to now
-                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: self?.lastSyncKey ?? "")
+                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: self.lastSyncKey)
                 }
             }
+    }
+    
+    /// Detaches the snapshot listener
+    func stopSyncing() {
+        listener?.remove()
+        listener = nil
     }
     
     /// Pulls the most recent 50 trips immediately, then fetches everything else.
@@ -230,16 +235,17 @@ class SyncManager: ObservableObject {
         // Fetch last 50 for instant UI population
         db.collection("trips")
             .whereField("userId", isEqualTo: userId)
-            .orderBy("startTime", descending: true)
+            .order(by: "startTime", descending: true)
             .limit(to: 50)
             .getDocuments { [weak self] snapshot, error in
                 guard let snapshot = snapshot else { return }
                 Task { @MainActor in
-                    self?.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
+                    guard let self = self else { return }
+                    self.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
                     print("Initial hydration (recent 50) complete.")
                     
                     // Now fetch the rest in the background
-                    self?.fetchFullHistory(modelContext: modelContext, userId: userId)
+                    self.fetchFullHistory(modelContext: modelContext, userId: userId)
                 }
             }
     }
@@ -253,17 +259,12 @@ class SyncManager: ObservableObject {
             .getDocuments { [weak self] snapshot, error in
                 guard let snapshot = snapshot else { return }
                 Task { @MainActor in
-                    self?.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
-                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: self?.lastSyncKey ?? "")
+                    guard let self = self else { return }
+                    self.syncTrips(snapshot.documentChanges, in: modelContext, userId: userId)
+                    UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: self.lastSyncKey)
                     print("Full history sync complete.")
                 }
             }
-    }
-    
-    /// Detaches the snapshot listener
-    func stopSyncing() {
-        listener?.remove()
-        listener = nil
     }
     
     /// Finds local trips that haven't been synced to Firestore and uploads them.
@@ -463,9 +464,6 @@ class SyncManager: ObservableObject {
                 let startAccuracy = data["startAccuracy"] as? Double
                 let endAccuracy = data["endAccuracy"] as? Double
                 
-                let startHubId = data["startHubId"] as? String
-                let endHubId = data["endHubId"] as? String
-                
                 let notes = data["notes"] as? String
                 let vehicle = data["vehicle"] as? String
                 let source = data["source"] as? String ?? "ios"
@@ -516,8 +514,6 @@ class SyncManager: ObservableObject {
                         endLongitude: endLongitude,
                         startAccuracy: startAccuracy,
                         endAccuracy: endAccuracy,
-                        startHubId: startHubId,
-                        endHubId: endHubId,
                         notes: notes,
                         vehicle: vehicle,
                         source: source,
@@ -543,6 +539,4 @@ class SyncManager: ObservableObject {
             print("Failed to save synced SwiftData context: \(error.localizedDescription)")
         }
     }
-}
-  }
 }
