@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.42.0] - 2026-06-01
+
 ### Changed
 - **Premium UI Redesign**: Overhauled the entire app interface to achieve a cohesive, high-end "in-between" aesthetic (blending Transit App's bold clarity with Flighty's elegance).
 - **Unified Visual Identity**: Standardized the deep navy background across all tabs and replaced default iOS lists with custom, card-based ScrollViews for a modern look.
