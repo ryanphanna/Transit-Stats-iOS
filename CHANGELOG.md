@@ -10,13 +10,9 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - **Inline Directions**: Relocated direction prediction chips from the advanced details block to display inline directly below route input suggestions when a route is selected or typed.
 - **Simplified Advanced Options**: Renamed the advanced options panel to "Add Agency" and removed the direction selector, keeping only the agency selector.
-<<<<<<< HEAD
-## [1.42.0] - 2026-06-03
-=======
 
 
 ## [1.0.0] - 2026-06-03
->>>>>>> 57a9412 (release: v1.1.0 and update roadmap)
 
 ### Changed
 - **Premium UI Redesign**: Overhauled the entire app interface to achieve a cohesive, high-end "in-between" aesthetic (blending Transit App's bold clarity with Flighty's elegance).
