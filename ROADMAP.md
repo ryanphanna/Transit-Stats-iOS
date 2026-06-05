@@ -29,10 +29,6 @@ This roadmap outlines the planned features and platform-specific goals for the T
     *   Small/Medium home screen widgets to start a new trip with a single tap — pre-filled with a frequent route if one is detected.
     *   Lock Screen Live Activities showing the active trip in real time — current route, direction, and elapsed time — on the lock screen and Dynamic Island.
 
-*   **watchOS Companion**:
-    *   Fully standalone watch app with local SwiftData sync so trips can be logged and ended directly from the wrist.
-    *   Haptic confirmation when a trip is successfully started.
-
 *   **Siri & App Shortcuts**:
     *   Voice-activate trip logging via App Intents (e.g., *"Hey Siri, start my commute"*).
     *   Expose start/end trip actions to the Shortcuts app for custom automations (e.g., auto-start on leaving a home geofence).
