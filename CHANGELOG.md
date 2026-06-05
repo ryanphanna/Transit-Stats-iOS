@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Stop Auto-Suggestions**: Implemented real-time stop suggestions in the boarding logger (`AddTripView`). When typing, suggestions are pulled from trip history (ranked by recency) and the local stop library (ranked by verified status), displayed in a dropdown-style vertical stack.
+
+### Changed
+- **Inline Directions**: Relocated direction prediction chips from the advanced details block to display inline directly below route input suggestions when a route is selected or typed.
+- **Simplified Advanced Options**: Renamed the advanced options panel to "Add Agency" and removed the direction selector, keeping only the agency selector.
 ## [1.42.0] - 2026-06-03
 
 ### Changed

@@ -63,6 +63,30 @@ struct PredictionEngine {
         .sorted { $0.confidence > $1.confidence }
     }
     
+    /// Predicts likely exit stops for a route starting at a specific stop.
+    static func predictExitStops(history: [TripRecord], route: String, startStopName: String?) -> [String] {
+        guard !history.isEmpty else { return [] }
+        
+        let normalizedStart = startStopName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        
+        // Filter history to trips matching the same route and start stop
+        let matchingTrips = history.filter { trip in
+            trip.route.lowercased() == route.lowercased() &&
+            (normalizedStart == nil || trip.startStopName?.lowercased().contains(normalizedStart!) ?? false)
+        }
+        
+        // Count frequencies of end stop names
+        var exitCounts: [String: Int] = [:]
+        for trip in matchingTrips {
+            if let endStop = trip.endStopName?.trimmingCharacters(in: .whitespacesAndNewlines), !endStop.isEmpty {
+                exitCounts[endStop, default: 0] += 1
+            }
+        }
+        
+        // Return top 5 sorted by frequency
+        return exitCounts.sorted { $0.value > $1.value }.map { $0.key }
+    }
+    
     // MARK: - Scoring Functions
     
     private static func calculateWeight(for trip: TripRecord, relativeTo now: Date) -> Double {

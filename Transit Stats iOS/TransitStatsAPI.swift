@@ -201,12 +201,8 @@ class SyncManager: ObservableObject {
         }
         
         // 2. Setup real-time listener for delta changes
-        // We use a slightly overlapping timestamp to ensure no gaps
-        let syncThreshold = lastSync > 0 ? Date(timeIntervalSince1970: lastSync - 60) : Date(timeIntervalSince1970: 0)
-        
         listener = db.collection("trips")
             .whereField("userId", isEqualTo: userId)
-            .whereField("startTime", isGreaterThan: Timestamp(date: syncThreshold))
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let snapshot = snapshot else {
                     print("Error listening to Firestore trips: \(error?.localizedDescription ?? "unknown")")

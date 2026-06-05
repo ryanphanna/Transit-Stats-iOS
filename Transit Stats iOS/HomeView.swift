@@ -33,6 +33,7 @@ struct HomeView: View {
     @State private var isShowingAddTripSheet = false
     @State private var isShowingSettingsSheet = false
     @State private var isShowingProfileSheet = false
+    @State private var activeRouteText = ""
     
     // Map State
     @State private var cameraPosition: MapCameraPosition = .automatic
@@ -267,30 +268,141 @@ struct HomeView: View {
             }
             
             // Route Header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(trip.route)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    if !trip.direction.isEmpty {
-                        Text(trip.direction.uppercased())
-                            .font(.system(size: 11, weight: .black))
-                            .foregroundColor(.white.opacity(0.4))
-                            .kerning(0.8)
+            if trip.route.isEmpty {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Which route?")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                            Text("Enter or select below")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("ELAPSED")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.white.opacity(0.3))
+                                .kerning(1)
+                            Text(timeElapsed)
+                                .font(.system(size: 16, weight: .bold, design: .monospaced))
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    
+                    HStack(spacing: 10) {
+                        TextField("e.g. 506, Line 1, GO Lakeshore", text: $activeRouteText)
+                            .font(.system(size: 14, weight: .medium))
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(Color.white.opacity(0.05))
+                            .cornerRadius(12)
+                            .foregroundColor(.white)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
+                            .autocorrectionDisabled()
+                        
+                        Button(action: {
+                            let enteredRoute = activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !enteredRoute.isEmpty {
+                                withAnimation {
+                                    trip.route = enteredRoute
+                                    // Query prediction engine to auto-apply direction and agency
+                                    let preds = PredictionEngine.predict(history: completedTrips, stopName: trip.startStopName)
+                                        .filter { $0.route.lowercased() == enteredRoute.lowercased() }
+                                    if let best = preds.first {
+                                        trip.direction = best.direction
+                                    }
+                                    if let match = completedTrips.first(where: { $0.route.lowercased() == enteredRoute.lowercased() }) {
+                                        trip.agency = match.agency
+                                    }
+                                    try? modelContext.save()
+                                    activeRouteText = ""
+                                }
+                            }
+                        }) {
+                            Text("Apply")
+                                .font(.system(size: 13, weight: .bold))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.06) : Color.orange)
+                                .foregroundColor(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.3) : .white)
+                                .cornerRadius(12)
+                        }
+                        .disabled(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    
+                    let routeSuggestions = PredictionEngine.predict(history: completedTrips, stopName: trip.startStopName)
+                    if !routeSuggestions.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(routeSuggestions.prefix(5), id: \.route) { pred in
+                                    Button(action: {
+                                        withAnimation {
+                                            trip.route = pred.route
+                                            trip.direction = pred.direction
+                                            if let match = completedTrips.first(where: { $0.route == pred.route }) {
+                                                trip.agency = match.agency
+                                            }
+                                            try? modelContext.save()
+                                        }
+                                    }) {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(pred.route)
+                                                .font(.system(size: 13, weight: .bold))
+                                                .foregroundColor(.orange)
+                                            if !pred.direction.isEmpty {
+                                                Text(pred.direction.uppercased())
+                                                    .font(.system(size: 8, weight: .black))
+                                                    .foregroundColor(.white.opacity(0.4))
+                                                    .kerning(0.5)
+                                            }
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                        .background(Color.white.opacity(0.08))
+                                        .cornerRadius(10)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("ELAPSED")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.white.opacity(0.3))
-                        .kerning(1)
-                    Text(timeElapsed)
-                        .font(.system(size: 16, weight: .bold, design: .monospaced))
-                        .foregroundColor(.orange)
+            } else {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(trip.route)
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        if !trip.direction.isEmpty {
+                            Text(trip.direction.uppercased())
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundColor(.white.opacity(0.4))
+                                .kerning(0.8)
+                        }
+                    }
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("ELAPSED")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.white.opacity(0.3))
+                            .kerning(1)
+                        Text(timeElapsed)
+                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .foregroundColor(.orange)
+                    }
                 }
             }
+
             
             // Timeline
             HStack(spacing: 0) {
@@ -354,6 +466,38 @@ struct HomeView: View {
                             .stroke(Color.white.opacity(0.1), lineWidth: 1)
                     )
                 
+                let exitSuggestions = PredictionEngine.predictExitStops(history: completedTrips, route: trip.route, startStopName: trip.startStopName)
+                if !exitSuggestions.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(exitSuggestions, id: \.self) { suggestion in
+                                Button(action: {
+                                    endStopText = suggestion
+                                    endTrip()
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "mappin.and.ellipse")
+                                            .font(.system(size: 9))
+                                            .foregroundColor(.white.opacity(0.6))
+                                        Text(suggestion)
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundColor(.white)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.white.opacity(0.08))
+                                    .cornerRadius(10)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, 2)
+                }
+                
                 HStack(spacing: 12) {
                     Button(action: endTrip) {
                         HStack {
@@ -368,12 +512,12 @@ struct HomeView: View {
                             Spacer()
                         }
                         .padding(.vertical, 14)
-                        .background(Color.orange)
-                        .foregroundColor(.white)
+                        .background(trip.route.isEmpty ? Color.white.opacity(0.08) : Color.orange)
+                        .foregroundColor(trip.route.isEmpty ? Color.white.opacity(0.3) : .white)
                         .cornerRadius(12)
-                        .shadow(color: Color.orange.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .shadow(color: trip.route.isEmpty ? .clear : Color.orange.opacity(0.2), radius: 8, x: 0, y: 4)
                     }
-                    .disabled(api.isSendingCommand)
+                    .disabled(api.isSendingCommand || trip.route.isEmpty)
                     
                     Menu {
                         Button("Forgot to End", role: .none, action: forgotTrip)
