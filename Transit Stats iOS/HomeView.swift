@@ -193,12 +193,27 @@ struct HomeView: View {
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 0) {
-                // Drag handle
-                Capsule()
-                    .fill(Color.white.opacity(0.25))
-                    .frame(width: 36, height: 4)
-                    .padding(.top, 10)
-                    .padding(.bottom, 4)
+                // Dedicated Drag Zone
+                VStack(spacing: 0) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.25))
+                        .frame(width: 36, height: 4)
+                        .padding(.top, 10)
+                        .padding(.bottom, 10)
+                }
+                .frame(maxWidth: .infinity)
+                .background(Color.white.opacity(0.001)) // Make it tappable
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in dragOffset = -value.translation.height }
+                        .onEnded { _ in
+                            let nearest = snapHeights.min(by: { abs($0 - (panelHeight + dragOffset)) < abs($1 - (panelHeight + dragOffset)) }) ?? 270
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                panelHeight = nearest
+                                dragOffset = 0
+                            }
+                        }
+                )
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
@@ -225,17 +240,6 @@ struct HomeView: View {
                 UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
                     .stroke(Color.white.opacity(0.08), lineWidth: 1)
             )
-            .gesture(
-                DragGesture()
-                    .onChanged { value in dragOffset = -value.translation.height }
-                    .onEnded { _ in
-                        let nearest = snapHeights.min(by: { abs($0 - effectivePanelHeight) < abs($1 - effectivePanelHeight) }) ?? 270
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                            panelHeight = nearest
-                            dragOffset = 0
-                        }
-                    }
-            )
         }
         .ignoresSafeArea(edges: .bottom)
         }
@@ -249,9 +253,12 @@ struct HomeView: View {
         }
         .sheet(isPresented: $isShowingAddTripSheet) {
             AddTripView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingSettingsSheet) {
             SettingsView()
+                .presentationDetents([.medium, .large])
         }
         .alert("API Error", isPresented: Binding(
             get: { api.lastError != nil },

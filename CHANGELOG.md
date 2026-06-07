@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Responsive Home Panel**: Refactored the bottom panel on the Home screen to use a dedicated drag zone at the top. This eliminates gesture conflicts with the internal scroll view, making it much easier to swipe the panel up and down.
+- **Medium-Detent Sheets**: Updated the "Add Trip" and "Settings" screens to open as non-full-screen sheets (medium detent) by default. This allows for a much faster "quick log" experience without losing context of the map.
 - **Elegant Map Markers**: Redesigned map markers to be more refined and integrated with the map. Active trips now feature a glowing, pulsing icon, while transit hubs are represented by high-contrast 'dots' with translucent borders. This replaces the basic numbered circles with a more professional, Apple Maps-inspired aesthetic.
 - **Standardized Panel Backgrounds**: Synchronized the background styling of the Home screen 'Ready' panel and the 'Add Trip' sheet. Both now use a consistent `ultraThinMaterial` for a cohesive, premium translucent look across the app.
 - **One-Tap 'Locate' in Logger**: Added a dedicated Locate button to the boarding logger (`AddTripView`). Tapping it instantly scans for nearby transit stops and surfaces them as one-tap chips, eliminating the need to type your current location.
