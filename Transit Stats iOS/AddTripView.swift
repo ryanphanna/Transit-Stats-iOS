@@ -27,6 +27,8 @@ struct AddTripView: View {
     
     private var profile: UserProfile? { profiles.first }
     
+    @State private var isLocating = false
+
     private var nearbyHubs: [NearbyHub] {
         guard let location = locationManager.lastLocation else { return [] }
         
@@ -257,24 +259,52 @@ struct AddTripView: View {
                         .kerning(1.2)
                         .padding(.horizontal, 28)
 
-                    HStack(spacing: 12) {
-                        TextField("e.g. College St at Spadina", text: $stopText)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.vertical, 14)
-                            .padding(.horizontal, 16)
-                            .background(Color.white.opacity(0.06))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(
-                                        stopText.isEmpty ? Color.white.opacity(0.1) : Color.blue.opacity(0.4),
-                                        lineWidth: 1
-                                    )
-                            )
-                            .autocorrectionDisabled()
-                            .submitLabel(.next)
-                            .onSubmit { startTripAtStop() }
+                    HStack(spacing: 10) {
+                        ZStack(alignment: .trailing) {
+                            TextField("e.g. College St at Spadina", text: $stopText)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.vertical, 14)
+                                .padding(.leading, 16)
+                                .padding(.trailing, 44)
+                                .background(Color.white.opacity(0.06))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(
+                                            stopText.isEmpty ? Color.white.opacity(0.1) : Color.blue.opacity(0.4),
+                                            lineWidth: 1
+                                        )
+                                )
+                                .autocorrectionDisabled()
+                                .submitLabel(.next)
+                                .onSubmit { startTripAtStop() }
+
+                            if stopText.isEmpty {
+                                Button(action: locateUser) {
+                                    ZStack {
+                                        if isLocating {
+                                            ProgressView().tint(.blue)
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Image(systemName: "location.fill")
+                                                .font(.system(size: 14))
+                                                .foregroundColor(.blue)
+                                        }
+                                    }
+                                    .frame(width: 32, height: 32)
+                                    .background(Color.blue.opacity(0.15))
+                                    .clipShape(Circle())
+                                }
+                                .padding(.trailing, 8)
+                            } else {
+                                Button(action: { stopText = "" }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.white.opacity(0.2))
+                                }
+                                .padding(.trailing, 12)
+                            }
+                        }
                         
                         Button(action: { showingImagePicker = true }) {
                             ZStack {
@@ -339,34 +369,65 @@ struct AddTripView: View {
                         }
                         .padding(.horizontal, 20)
                     }
-                } else if !nearbyHubs.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(nearbyHubs.prefix(5)) { hub in
-                                Button(action: {
-                                    stopText = hub.name
-                                    startTripAtStop()
-                                }) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: hub.isVerified ? "checkmark.seal.fill" : "mappin.and.ellipse")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(hub.isVerified ? .blue : .white.opacity(0.6))
-                                        
-                                        Text(hub.name)
-                                            .font(.system(size: 12, weight: .semibold))
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(Color.white.opacity(0.1))
-                                    .cornerRadius(12)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(hub.isVerified ? Color.blue.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
-                                    )
-                                }
+                } else {
+                    // NEARBY SECTION
+                    VStack(alignment: .leading, spacing: 10) {
+                        if !nearbyHubs.isEmpty {
+                            HStack {
+                                Text("NEARBY STOPS")
+                                    .font(.system(size: 9, weight: .black))
+                                    .foregroundColor(Color.white.opacity(0.35))
+                                    .kerning(1.2)
+                                Spacer()
                             }
+                            .padding(.horizontal, 28)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(nearbyHubs.prefix(5)) { hub in
+                                        Button(action: {
+                                            withAnimation(.spring()) {
+                                                stopText = hub.name
+                                            }
+                                        }) {
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                HStack(spacing: 4) {
+                                                    Image(systemName: hub.isVerified ? "checkmark.seal.fill" : "mappin.and.ellipse")
+                                                        .font(.system(size: 10))
+                                                        .foregroundColor(hub.isVerified ? .blue : .white.opacity(0.6))
+                                                    Text("\(Int(hub.distance))m away")
+                                                        .font(.system(size: 8, weight: .bold))
+                                                        .foregroundColor(.white.opacity(0.3))
+                                                }
+                                                
+                                                Text(hub.name)
+                                                    .font(.system(size: 13, weight: .bold))
+                                                    .foregroundColor(.white)
+                                                    .lineLimit(1)
+                                            }
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 12)
+                                            .background(Color.white.opacity(0.08))
+                                            .cornerRadius(14)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 14)
+                                                    .stroke(hub.isVerified ? Color.blue.opacity(0.3) : Color.white.opacity(0.1), lineWidth: 1)
+                                            )
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                        } else if isLocating {
+                            HStack(spacing: 12) {
+                                ProgressView().tint(.blue)
+                                Text("Finding nearby stops...")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.white.opacity(0.4))
+                            }
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 10)
                         }
-                        .padding(.horizontal, 20)
                     }
                 }
 
@@ -701,6 +762,17 @@ struct AddTripView: View {
     }
 
     // MARK: - Actions
+
+    private func locateUser() {
+        isLocating = true
+        locationManager.requestPermission()
+        locationManager.startUpdating()
+        
+        // Give it a second to find location
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            isLocating = false
+        }
+    }
 
     private func startTripAtStop() {
         let stop = stopText.trimmingCharacters(in: .whitespaces)

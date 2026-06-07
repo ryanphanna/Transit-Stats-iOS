@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **One-Tap 'Locate' in Logger**: Added a dedicated Locate button to the boarding logger (`AddTripView`). Tapping it instantly scans for nearby transit stops and surfaces them as one-tap chips, eliminating the need to type your current location.
+- **Dynamic Agency Stats**: The Agencies section on the Stats page now respects the year filter and is limited to your Top 5 most-used agencies, providing a cleaner and more relevant breakdown of your transit habits.
 - **Stats Year Picker Relocation**: Moved the year filter ("All Time", "2026", etc.) from the main scroll view to a clean `Menu` in the top-right of the navigation bar. This declutters the Stats page and provides a more native iOS filtering experience.
 - **Trip Detail View Redesign**: Overhauled the trip detail sheet with a premium, high-fidelity aesthetic. Includes a new hero section with a stylized route badge, a refined journey timeline with better iconography, a 3-column stats grid, and improved details cards.
 - **Centralized App Constants**: Moved app version, support email, and platform name to `AppEnvironment` for single-point management.

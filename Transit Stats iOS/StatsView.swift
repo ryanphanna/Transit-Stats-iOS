@@ -100,7 +100,7 @@ struct StatsView: View {
     }
 
     private var agencyStats: [(agency: String, count: Int)] {
-        let groups = Dictionary(grouping: allTrips.filter { !$0.agency.isEmpty }) { $0.agency }
+        let groups = Dictionary(grouping: trips.filter { !$0.agency.isEmpty }) { $0.agency }
         return groups.map { (agency: $0.key, count: $0.value.count) }
             .sorted { $0.count > $1.count }
     }
@@ -167,15 +167,15 @@ struct StatsView: View {
                         heatmapCard
 
                         // Agencies
-                        if agencyStats.count > 1 {
+                        if agencyStats.count > 0 {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("AGENCIES")
+                                Text("TOP AGENCIES")
                                     .font(.system(size: 10, weight: .black))
                                     .foregroundColor(.white.opacity(0.4))
                                     .kerning(1.5)
                                     .padding(.horizontal, 20)
 
-                                ForEach(agencyStats, id: \.agency) { stat in
+                                ForEach(agencyStats.prefix(5), id: \.agency) { stat in
                                     agencyRow(stat)
                                 }
                                 .padding(.horizontal, 20)
