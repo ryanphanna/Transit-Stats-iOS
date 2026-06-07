@@ -117,7 +117,7 @@ struct HomeView: View {
             // Full Screen Interactive Map Background
             Map(position: $cameraPosition) {
                 ForEach(mapMarkers) { marker in
-                    Annotation(marker.label, coordinate: marker.coordinate) {
+                    Annotation("", coordinate: marker.coordinate) {
                         HubView(marker: marker)
                     }
                 }
@@ -168,7 +168,7 @@ struct HomeView: View {
                                 if let coord = locationManager.lastLocation?.coordinate {
                                     cameraPosition = .region(MKCoordinateRegion(
                                         center: coord,
-                                        span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.004)
+                                        span: MKCoordinateSpan(latitudeDelta: 0.002, longitudeDelta: 0.002)
                                     ))
                                 } else {
                                     cameraPosition = .userLocation(followsHeading: false, fallback: .automatic)
@@ -917,29 +917,18 @@ struct HubView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
             } else {
-                // Inactive hub: Elegant dot with border
+                // Inactive hub: Heatmap dot with translucent border
                 ZStack {
                     Circle()
                         .fill(.ultraThinMaterial)
-                        .frame(width: 24, height: 24)
-                        .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                        .frame(width: 20, height: 20)
+                        .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
                     
                     Circle()
-                        .fill(accent.gradient)
-                        .frame(width: 10, height: 10)
-                        .shadow(color: accent.opacity(0.3), radius: 4)
-                    
-                    // Small subtle count badge if > 1
-                    if marker.count > 1 {
-                        Text("\(marker.count)")
-                            .font(.system(size: 8, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(Color.black.opacity(0.6))
-                            .clipShape(Capsule())
-                            .offset(x: 10, y: -10)
-                    }
+                        .fill(accent)
+                        .opacity(heatmapIntensity(for: marker.count))
+                        .frame(width: 12, height: 12)
+                        .shadow(color: accent.opacity(marker.count > 5 ? 0.4 : 0), radius: 4)
                 }
             }
         }
@@ -947,8 +936,13 @@ struct HubView: View {
         .animation(.spring(), value: marker.isActive)
     }
     
+    private func heatmapIntensity(for count: Int) -> Double {
+        // Base visibility 0.2, scales up to 1.0 at 15+ trips
+        min(0.2 + (Double(count) / 15.0) * 0.8, 1.0)
+    }
+    
     private func scaleForCount(_ count: Int) -> CGFloat {
-        // Subtle scaling for frequency
-        min(0.9 + CGFloat(count - 1) * 0.03, 1.2)
+        // Very subtle scaling to keep the heatmap clean
+        min(0.9 + CGFloat(count) * 0.02, 1.3)
     }
 }

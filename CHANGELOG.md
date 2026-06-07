@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Map Heatmap Visualization**: Replaced numbered map markers with a clean heatmap system. Hubs now use color opacity and subtle scaling to indicate trip frequency, creating a more intuitive spatial data visualization. Removed text labels from markers for a minimalist, immersive map experience.
+- **Enhanced 'Locate Me' Zoom**: Increased the zoom level of the 'Locate' button to a street-level focus (~200m radius), making it easier to see exactly where you are relative to nearby stops.
 - **Trip Deletion**: Added support for deleting trips directly from the history tab. Users can now use a 'swipe-to-delete' gesture or a long-press context menu to remove incorrect or unwanted trip entries.
 - **Final Design Polish & Branding**: Standardized the entire app's color palette (Deep Navy, Brand Blue) and updated the `LoginView` to match the premium dark theme.
 - **Empty State Views**: Implemented a "No Trips Yet" view in the history tab to provide a better experience for new users.
