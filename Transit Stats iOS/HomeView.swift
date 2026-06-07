@@ -99,9 +99,7 @@ struct HomeView: View {
     @State private var timeElapsed = ""
     let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
-    // Panel drag state
-    private let snapHeights: [CGFloat] = [110, 300, 520]
-    @State private var panelHeight: CGFloat = 300
+    @State private var panelDetent: PresentationDetent = .medium
     
     var activeTrip: TripRecord? {
         activeTrips.first
@@ -129,30 +127,29 @@ struct HomeView: View {
             }
             .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Top control bar
+            // Settings button — top right
+            VStack {
                 HStack {
                     Spacer()
-                    HStack(spacing: 16) {
-                        Button(action: { isShowingSettingsSheet = true }) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white)
-                        }
+                    Button(action: { isShowingSettingsSheet = true }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                            .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(22)
-                    .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.white.opacity(0.15), lineWidth: 1))
-                    .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.trailing, 16)
                 }
-
+                .padding(.top, 8)
                 Spacer()
+            }
 
-                // Locate button — bottom right, above panel
+            // Locate button — bottom right
+            VStack {
+                Spacer()
                 HStack {
                     Spacer()
                     Button(action: {
@@ -170,55 +167,8 @@ struct HomeView: View {
                             .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
                     }
                     .padding(.trailing, 16)
-                    .padding(.bottom, 12)
                 }
-
-                // Bottom draggable panel
-                VStack(spacing: 0) {
-                    // Drag handle
-                    Capsule()
-                        .fill(Color.white.opacity(0.3))
-                        .frame(width: 36, height: 5)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture()
-                                .onChanged { value in
-                                    let proposed = panelHeight - value.translation.height
-                                    panelHeight = min(max(proposed, snapHeights[0] - 30), snapHeights[2] + 30)
-                                }
-                                .onEnded { value in
-                                    let projected = panelHeight - value.predictedEndTranslation.height * 0.25
-                                    withAnimation(.interpolatingSpring(stiffness: 320, damping: 28)) {
-                                        panelHeight = snapHeights.min(by: { abs($0 - projected) < abs($1 - projected) })!
-                                    }
-                                }
-                        )
-
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 20) {
-                            if let trip = activeTrip {
-                                activeTripCard(trip)
-                                    .onAppear { updateTimer(for: trip) }
-                                    .onReceive(timer) { _ in updateTimer(for: trip) }
-                            } else {
-                                readyStateCard
-                            }
-                            if !api.lastReplies.isEmpty {
-                                repliesPanel
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
-                    }
-                }
-                .frame(height: panelHeight)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30))
-                .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.12), lineWidth: 1))
-                .shadow(color: Color.black.opacity(0.35), radius: 15, x: 0, y: -5)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 10)
+                .padding(.bottom, 130)
             }
         }
         .preferredColorScheme(.dark)
@@ -229,11 +179,35 @@ struct HomeView: View {
         .onDisappear {
             locationManager.stopUpdating()
         }
-        .sheet(isPresented: $isShowingAddTripSheet) {
-            AddTripView()
-        }
-        .sheet(isPresented: $isShowingSettingsSheet) {
-            SettingsView()
+        .sheet(isPresented: .constant(true)) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    if let trip = activeTrip {
+                        activeTripCard(trip)
+                            .onAppear { updateTimer(for: trip) }
+                            .onReceive(timer) { _ in updateTimer(for: trip) }
+                    } else {
+                        readyStateCard
+                    }
+                    if !api.lastReplies.isEmpty {
+                        repliesPanel
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 40)
+            }
+            .presentationDetents([.height(110), .medium, .large], selection: $panelDetent)
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.ultraThinMaterial)
+            .interactiveDismissDisabled()
+            .presentationCornerRadius(28)
+            .sheet(isPresented: $isShowingAddTripSheet) {
+                AddTripView()
+            }
+            .sheet(isPresented: $isShowingSettingsSheet) {
+                SettingsView()
+            }
         }
         .alert("API Error", isPresented: Binding(
             get: { api.lastError != nil },
@@ -342,7 +316,7 @@ struct HomeView: View {
                         .disabled(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                     
-                    let routeSuggestions = PredictionEngine.predict(history: completedTrips, stopName: trip.startStopName)
+                    let routeSuggestions = PredictionEngine.predict(history: completedTrips, stopName: trip.startStopName).filter { !$0.route.isEmpty }
                     if !routeSuggestions.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
