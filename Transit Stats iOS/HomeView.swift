@@ -118,6 +118,7 @@ struct HomeView: View {
                 }
                 UserAnnotation()
             }
+            .preferredColorScheme(.dark)
             .mapStyle(.standard)
             .mapControls {
                 MapCompass()
