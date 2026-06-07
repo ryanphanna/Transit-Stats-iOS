@@ -2,15 +2,24 @@ import SwiftUI
 import Charts
 import SwiftData
 import PhotosUI
+import MapKit
 
 struct StatsView: View {
     @Query(sort: \TripRecord.startTime, order: .reverse) private var allTrips: [TripRecord]
     @Query private var profiles: [UserProfile]
-    @Query private var accuracies: [PredictionAccuracy]
     @EnvironmentObject private var appEnv: AppEnvironment
     @State private var selectedYear: Int? = nil
     @State private var profileImage: UIImage? = nil
     @State private var pickerItem: PhotosPickerItem? = nil
+    
+    // Panel State
+    private let snapHeights: [CGFloat] = [140, 480, 800]
+    @State private var panelHeight: CGFloat = 480
+    @State private var dragOffset: CGFloat = 0
+    private var effectivePanelHeight: CGFloat { max(snapHeights[0], panelHeight + dragOffset) }
+    
+    // Map State
+    @State private var cameraPosition: MapCameraPosition = .automatic
 
     private var profile: UserProfile? { profiles.first }
     private var accent: Color { appEnv.accent }
@@ -49,32 +58,21 @@ struct StatsView: View {
             .sorted { $0.count > $1.count }
     }
 
-    private var topRoute: String {
-        topRoutes.first?.route ?? "N/A"
-    }
-
-    private var tripDaySet: Set<Date> {
-        let calendar = Calendar.current
-        let allCompleted = allTrips.filter { $0.endTime != nil }
-        return Set(allCompleted.map { calendar.startOfDay(for: $0.startTime) })
-    }
-
     private var currentStreak: Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        var checkDate = tripDaySet.contains(today)
-            ? today
-            : calendar.date(byAdding: .day, value: -1, to: today)!
+        let tripDaySet = Set(allTrips.filter { $0.endTime != nil }.map { calendar.startOfDay(for: $0.startTime) })
+        var checkDate = tripDaySet.contains(today) ? today : (calendar.date(byAdding: .day, value: -1, to: today) ?? today)
         var streak = 0
         while tripDaySet.contains(checkDate) {
             streak += 1
-            checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate)!
+            checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
         }
         return streak
     }
 
     private var longestStreak: Int {
-        let days = tripDaySet.sorted()
+        let days = Set(allTrips.filter { $0.endTime != nil }.map { Calendar.current.startOfDay(for: $0.startTime) }).sorted()
         guard !days.isEmpty else { return 0 }
         let calendar = Calendar.current
         var longest = 1, current = 1
@@ -83,9 +81,7 @@ struct StatsView: View {
             if diff == 1 {
                 current += 1
                 if current > longest { longest = current }
-            } else {
-                current = 1
-            }
+            } else { current = 1 }
         }
         return longest
     }
@@ -143,139 +139,202 @@ struct StatsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(hex: "020617").ignoresSafeArea()
+        ZStack {
+            // Map Background
+            Map(position: $cameraPosition) {
+                ForEach(allTrips.filter { $0.pathData != nil }) { trip in
+                    MapPolyline(coordinates: trip.path.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                        .stroke(accent.opacity(0.4), lineWidth: 2)
+                }
+                UserAnnotation()
+            }
+            .preferredColorScheme(.dark)
+            .mapStyle(.standard)
+            .mapControls { }
+            .ignoresSafeArea()
+            
+            // Background dimming
+            Color.black.opacity(min(0.4, (effectivePanelHeight - 140) / 1000))
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 20) {
-
-                        // Profile / Transit Card
-                        transitCard
-                            .padding(.horizontal, 20)
-                            .padding(.top, 4)
-
-                        // Passport card
-                        passportCard
-                            .padding(.horizontal, 20)
-
-                        // Streaks
-                        streakCard
-                            .padding(.horizontal, 20)
-
-                        // Activity heatmap
-                        heatmapCard
-
-                        // Agencies
-                        if agencyStats.count > 0 {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("TOP AGENCIES")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(.white.opacity(0.4))
-                                    .kerning(1.5)
-                                    .padding(.horizontal, 20)
-
-                                ForEach(agencyStats.prefix(5), id: \.agency) { stat in
-                                    agencyRow(stat)
+            VStack(spacing: 0) {
+                Spacer()
+                
+                VStack(spacing: 0) {
+                    // Panel Header
+                    VStack(alignment: .leading, spacing: 16) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.25))
+                            .frame(width: 36, height: 4)
+                            .padding(.top, 10)
+                            .frame(maxWidth: .infinity)
+                        
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Passport")
+                                    .font(.system(size: 34, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            Spacer()
+                            
+                            // Floating Profile photo
+                            PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+                                ZStack {
+                                    if let img = profileImage {
+                                        Image(uiImage: img)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 48, height: 48)
+                                            .clipShape(Circle())
+                                    } else {
+                                        Circle()
+                                            .fill(accent.opacity(0.12))
+                                            .frame(width: 48, height: 48)
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundColor(accent.opacity(0.6))
+                                    }
                                 }
-                                .padding(.horizontal, 20)
+                                .overlay(Circle().stroke(accent.opacity(0.3), lineWidth: 1))
+                                .shadow(color: .black.opacity(0.3), radius: 5)
                             }
                         }
-
-                        // Top Routes
-                        if !topRoutes.isEmpty {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("TOP ROUTES")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(.white.opacity(0.4))
-                                    .kerning(1.5)
-                                    .padding(.horizontal, 20)
-
-                                ForEach(topRoutes.prefix(6), id: \.route) { stat in
-                                    routeCard(stat)
-                                }
-                                .padding(.horizontal, 20)
-                            }
-                        }
-
-                        // Weekday chart
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("BY DAY OF WEEK")
-                                .font(.system(size: 10, weight: .black))
-                                .foregroundColor(.white.opacity(0.4))
-                                .kerning(1.5)
-
-                            Chart {
-                                ForEach(weekdayStats, id: \.day) { stat in
-                                    BarMark(
-                                        x: .value("Day", stat.day),
-                                        y: .value("Trips", stat.count)
-                                    )
-                                    .foregroundStyle(accent.opacity(0.8).gradient)
-                                    .cornerRadius(5)
-                                }
-                            }
-                            .chartXAxis {
-                                AxisMarks(values: .automatic) { _ in
-                                    AxisValueLabel()
-                                        .foregroundStyle(Color.white.opacity(0.4))
-                                        .font(.system(size: 10, weight: .semibold))
-                                }
-                            }
-                            .chartYAxis {
-                                AxisMarks(position: .trailing) { _ in
-                                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
-                                        .foregroundStyle(Color.white.opacity(0.06))
-                                    AxisValueLabel()
-                                        .foregroundStyle(Color.white.opacity(0.3))
-                                        .font(.system(size: 10))
-                                }
-                            }
-                            .frame(height: 160)
-                        }
-                        .padding(20)
-                        .background(Color.white.opacity(0.04))
-                        .cornerRadius(16)
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
                         .padding(.horizontal, 20)
-
-                        Spacer(minLength: 40)
-                    }
-                    .padding(.bottom, 20)
-                }
-            }
-            .navigationTitle("Stats")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button(action: { withAnimation { selectedYear = nil } }) {
-                            HStack {
-                                Text("All Time")
-                                if selectedYear == nil { Image(systemName: "checkmark") }
-                            }
-                        }
-                        ForEach(availableYears, id: \.self) { year in
-                            Button(action: { withAnimation { selectedYear = year } }) {
-                                HStack {
-                                    Text("\(year)")
-                                    if selectedYear == year { Image(systemName: "checkmark") }
+                        
+                        // Year Picker
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                yearPill(label: "All-Time", year: nil)
+                                ForEach(availableYears, id: \.self) { year in
+                                    yearPill(label: "\(year)", year: year)
                                 }
                             }
+                            .padding(.horizontal, 20)
                         }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(selectedYear.map { "\($0)" } ?? "All Time")
-                            Image(systemName: "line.3.horizontal.decrease.circle")
+                        .padding(.bottom, 4)
+                    }
+                    .background(Color.appBackground)
+                    .background(.ultraThinMaterial)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in dragOffset = -value.translation.height }
+                            .onEnded { _ in
+                                let currentHeight = panelHeight + dragOffset
+                                let nearest = snapHeights.min(by: { abs($0 - currentHeight) < abs($1 - currentHeight) }) ?? 480
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                    panelHeight = nearest
+                                    dragOffset = 0
+                                }
+                            }
+                    )
+
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 24) {
+
+                            // Passport Card (The Flighty Hero)
+                            passportCard
+                                .padding(.horizontal, 20)
+
+                            // Transit Card (Identity)
+                            transitCard
+                                .padding(.horizontal, 20)
+
+                            // Streaks
+                            streakCard
+                                .padding(.horizontal, 20)
+
+                            // Activity heatmap
+                            heatmapCard
+
+                            // Agencies
+                            if agencyStats.count > 0 {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("TOP AGENCIES")
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(.white.opacity(0.4))
+                                        .kerning(1.5)
+                                        .padding(.horizontal, 20)
+
+                                    ForEach(agencyStats.prefix(5), id: \.agency) { stat in
+                                        agencyRow(stat)
+                                    }
+                                    .padding(.horizontal, 20)
+                                }
+                            }
+
+                            // Top Routes
+                            if !topRoutes.isEmpty {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("TOP ROUTES")
+                                        .font(.system(size: 10, weight: .black))
+                                        .foregroundColor(.white.opacity(0.4))
+                                        .kerning(1.5)
+                                        .padding(.horizontal, 20)
+
+                                    ForEach(topRoutes.prefix(6), id: \.route) { stat in
+                                        routeCard(stat)
+                                    }
+                                    .padding(.horizontal, 20)
+                                }
+                            }
+
+                            // Weekday chart
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("BY DAY OF WEEK")
+                                    .font(.system(size: 10, weight: .black))
+                                    .foregroundColor(.white.opacity(0.4))
+                                    .kerning(1.5)
+
+                                Chart {
+                                    ForEach(weekdayStats, id: \.day) { stat in
+                                        BarMark(
+                                            x: .value("Day", stat.day),
+                                            y: .value("Trips", stat.count)
+                                        )
+                                        .foregroundStyle(accent.opacity(0.8).gradient)
+                                        .cornerRadius(5)
+                                    }
+                                }
+                                .chartXAxis {
+                                    AxisMarks(values: .automatic) { _ in
+                                        AxisValueLabel()
+                                            .foregroundStyle(Color.white.opacity(0.4))
+                                            .font(.system(size: 10, weight: .semibold))
+                                    }
+                                }
+                                .chartYAxis {
+                                    AxisMarks(position: .trailing) { _ in
+                                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
+                                            .foregroundStyle(Color.white.opacity(0.06))
+                                        AxisValueLabel()
+                                            .foregroundStyle(Color.white.opacity(0.3))
+                                            .font(.system(size: 10))
+                                    }
+                                }
+                                .frame(height: 160)
+                            }
+                            .padding(20)
+                            .background(Color.white.opacity(0.04))
+                            .cornerRadius(16)
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
+                            .padding(.horizontal, 20)
+
+                            Spacer(minLength: 120)
                         }
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(accent)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(accent.opacity(0.12))
-                        .clipShape(Capsule())
+                        .padding(.top, 10)
                     }
                 }
+                .frame(height: effectivePanelHeight)
+                .background(Color.appBackground)
+                .background(.ultraThinMaterial)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
+                .overlay(
+                    UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
             }
+            .ignoresSafeArea(edges: .bottom)
         }
         .onAppear { profileImage = ProfileImageManager.shared.load() }
         .onChange(of: pickerItem) { _, item in
@@ -291,70 +350,130 @@ struct StatsView: View {
 
     // MARK: - Subviews
 
-    private var passportCard: some View {
-        VStack(spacing: 0) {
-            // Header row
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("TRANSIT PASS")
-                        .font(.system(size: 9, weight: .black))
-                        .foregroundColor(.white.opacity(0.5))
-                        .kerning(2)
-                    Text(selectedYear.map { "\($0)" } ?? "ALL TIME")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.35))
-                }
-                Spacer()
-                Image(systemName: "tram.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.white.opacity(0.2))
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-
-            Divider().background(Color.white.opacity(0.08)).padding(.horizontal, 20)
-
-            // Stats grid
-            HStack(spacing: 0) {
-                passportStat(value: "\(trips.count)", label: "TRIPS")
-                Divider().background(Color.white.opacity(0.08)).frame(height: 40)
-                passportStat(value: formattedTime(totalMinutes), label: "TIME")
-            }
-            .padding(.vertical, 16)
-
-            Divider().background(Color.white.opacity(0.08)).padding(.horizontal, 20)
-
-            HStack(spacing: 0) {
-                passportStat(value: "\(uniqueRoutes)", label: "ROUTES")
-                Divider().background(Color.white.opacity(0.08)).frame(height: 40)
-                passportStat(value: "\(uniqueStops)", label: "STOPS")
-            }
-            .padding(.vertical, 16)
+    private func yearPill(label: String, year: Int?) -> some View {
+        let selected = selectedYear == year
+        return Button(action: { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { selectedYear = year } }) {
+            Text(label)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(selected ? .white : .white.opacity(0.35))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(selected ? Color.white.opacity(0.12) : Color.clear)
+                .clipShape(Capsule())
         }
-        .background(
-            LinearGradient(
-                colors: [Color(hex: "0d1b3e"), Color(hex: "0a0f1e")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
     }
 
-    private func passportStat(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+    private var passportCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Hero Title
+            VStack(alignment: .leading, spacing: 4) {
+                Text((selectedYear.map { "\($0) " } ?? "ALL-TIME ").uppercased() + "TRANSIT PASSPORT")
+                    .font(.system(size: 14, weight: .black))
+                    .foregroundColor(accent)
+                    .kerning(1)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "tram.fill")
+                        .font(.system(size: 8))
+                    Text("PASSPORT • PASS • PASAPORTE")
+                        .font(.system(size: 8, weight: .black))
+                        .kerning(1.5)
+                }
+                .foregroundColor(.white.opacity(0.4))
+            }
+            
+            // Primary Stats
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TRIPS")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.white.opacity(0.4))
+                        .kerning(1)
+                    Text("\(trips.count)")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text("\(agencyStats.count) Agencies")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.3))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TIME")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.white.opacity(0.4))
+                        .kerning(1)
+                    Text(formattedTime(totalMinutes))
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text("In transit")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.3))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            // Secondary Stats Grid
+            HStack(spacing: 0) {
+                miniPassportStat(label: "ROUTES", value: "\(uniqueRoutes)")
+                miniPassportStat(label: "STOPS", value: "\(uniqueStops)")
+                miniPassportStat(label: "STREAK", value: "\(currentStreak)d")
+            }
+            
+            // CTA
+            Button(action: {}) {
+                HStack {
+                    Text("All Transit Stats")
+                        .font(.system(size: 14, weight: .bold))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white.opacity(0.3))
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(Color.white.opacity(0.06))
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(24)
+        .background(
+            ZStack {
+                Color(hex: "020617")
+                LinearGradient(
+                    colors: [accent.opacity(0.15), .clear],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        )
+        .cornerRadius(28)
+        .overlay(
+            RoundedRectangle(cornerRadius: 28)
+                .stroke(
+                    LinearGradient(
+                        colors: [.white.opacity(0.2), .clear, .white.opacity(0.1)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 10)
+    }
+
+    private func miniPassportStat(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.system(size: 9, weight: .black))
-                .foregroundColor(.white.opacity(0.35))
-                .kerning(1.5)
+                .font(.system(size: 8, weight: .black))
+                .foregroundColor(.white.opacity(0.3))
+                .kerning(1)
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(.white.opacity(0.9))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
     }
 
     private func routeCard(_ stat: (route: String, count: Int)) -> some View {
@@ -382,15 +501,13 @@ struct StatsView: View {
         .cornerRadius(14)
     }
 
-    // MARK: - Transit Card (profile hero)
+    // MARK: - Transit Card (profile identity)
 
     private var transitCard: some View {
         ZStack {
-            // Background Layer: Deep Navy with a mesh-like gradient glow
             RoundedRectangle(cornerRadius: 28)
                 .fill(Color(hex: "020617"))
             
-            // Subtle "Holographic" shimmer
             RoundedRectangle(cornerRadius: 28)
                 .fill(
                     LinearGradient(
@@ -400,9 +517,7 @@ struct StatsView: View {
                     )
                 )
 
-            // Content
             VStack(alignment: .leading, spacing: 0) {
-                // Logo & Branding
                 HStack(alignment: .center) {
                     HStack(spacing: 8) {
                         Image(systemName: "tram.fill")
@@ -412,42 +527,18 @@ struct StatsView: View {
                             .background(accent.opacity(0.15))
                             .clipShape(Circle())
                         
-                        Text("TRANSIT PASS")
+                        Text("IDENTIFICATION")
                             .font(.system(size: 12, weight: .black))
                             .foregroundColor(.white.opacity(0.9))
                             .kerning(1.5)
                     }
-                    
                     Spacer()
-                    
-                    // Profile photo
-                    PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
-                        ZStack {
-                            if let img = profileImage {
-                                Image(uiImage: img)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 50, height: 50)
-                                    .clipShape(Circle())
-                            } else {
-                                Circle()
-                                    .fill(accent.opacity(0.12))
-                                    .frame(width: 50, height: 50)
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(accent.opacity(0.6))
-                            }
-                        }
-                        .overlay(Circle().stroke(accent.opacity(0.3), lineWidth: 1))
-                        .shadow(color: .black.opacity(0.3), radius: 5)
-                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
 
                 Spacer()
 
-                // Name & Rank
                 VStack(alignment: .leading, spacing: 6) {
                     Text(profile?.nickname ?? "TRANSIT RIDER")
                         .font(.system(size: 24, weight: .black, design: .rounded))
@@ -484,7 +575,6 @@ struct StatsView: View {
                     lineWidth: 1
                 )
         )
-        .shadow(color: .black.opacity(0.4), radius: 15, x: 0, y: 8)
     }
 
     // MARK: - Agency Row
@@ -527,7 +617,6 @@ struct StatsView: View {
 
     private var streakCard: some View {
         HStack(spacing: 0) {
-            // Current streak
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text("🔥")
@@ -551,7 +640,6 @@ struct StatsView: View {
                 .background(Color.white.opacity(0.08))
                 .frame(height: 60)
 
-            // Best streak
             VStack(alignment: .leading, spacing: 4) {
                 Text("BEST")
                     .font(.system(size: 9, weight: .black))
@@ -567,15 +655,9 @@ struct StatsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
         }
-        .background(
-            LinearGradient(
-                colors: [Color(hex: "0d1b3e"), Color(hex: "0a0f1e")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .background(Color.white.opacity(0.04))
+        .cornerRadius(24)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.06), lineWidth: 1))
     }
 
     // MARK: - Activity Heatmap
@@ -614,7 +696,7 @@ struct StatsView: View {
             let f = DateFormatter(); f.dateFormat = "MMM"; return f
         }()
 
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 12) {
             Text("ACTIVITY")
                 .font(.system(size: 10, weight: .black))
                 .foregroundColor(.white.opacity(0.4))
@@ -624,7 +706,6 @@ struct StatsView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 ScrollViewReader { proxy in
                     HStack(alignment: .top, spacing: 3) {
-                        // Day-of-week labels
                         VStack(spacing: 0) {
                             Color.clear.frame(height: 16)
                             VStack(spacing: 3) {
@@ -638,10 +719,8 @@ struct StatsView: View {
                         }
                         .padding(.trailing, 2)
 
-                        // Week columns
                         ForEach(Array(weeks.enumerated()), id: \.offset) { idx, weekStart in
                             VStack(spacing: 0) {
-                                // Month label
                                 let showMonth = idx == 0 || cal.component(.month, from: weekStart) != cal.component(.month, from: weeks[idx - 1])
                                 if showMonth {
                                     Text(monthFmt.string(from: weekStart))
@@ -652,7 +731,6 @@ struct StatsView: View {
                                 } else {
                                     Color.clear.frame(height: 16)
                                 }
-
                                 VStack(spacing: 3) {
                                     ForEach(0..<7, id: \.self) { dayOffset in
                                         let date = cal.date(byAdding: .day, value: dayOffset, to: weekStart) ?? weekStart
@@ -670,8 +748,7 @@ struct StatsView: View {
                     .onAppear { proxy.scrollTo(weeks.count - 1, anchor: .trailing) }
                 }
             }
-
-            // Legend
+            
             HStack(spacing: 4) {
                 Text("Less")
                     .font(.system(size: 9))
