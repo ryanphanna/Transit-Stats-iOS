@@ -120,7 +120,6 @@ struct HomeView: View {
             }
             .mapStyle(.standard)
             .mapControls {
-                MapUserLocationButton()
                 MapCompass()
             }
             .onAppear { updateCameraPosition() }
@@ -151,6 +150,27 @@ struct HomeView: View {
                 }
 
                 Spacer()
+
+                // Locate button — bottom right, above panel
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        withAnimation(.spring()) {
+                            cameraPosition = .userLocation(followsHeading: false, fallback: .automatic)
+                        }
+                    }) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                            .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 12)
+                }
 
                 // Bottom draggable panel
                 VStack(spacing: 0) {
