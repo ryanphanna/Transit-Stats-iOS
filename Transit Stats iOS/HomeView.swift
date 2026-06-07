@@ -16,7 +16,7 @@ struct Line: Shape {
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<TripRecord> { $0.endTime == nil }, sort: \TripRecord.startTime, order: .reverse)
+    @Query(filter: #Predicate<TripRecord> { $0.endTime == nil && $0.isSynced == false }, sort: \TripRecord.startTime, order: .reverse)
     private var activeTrips: [TripRecord]
     
     @Query(sort: \TripRecord.startTime, order: .reverse)
@@ -90,6 +90,10 @@ struct HomeView: View {
     // Live timer trigger
     @State private var timeElapsed = ""
     let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+
+    // Panel drag state
+    private let snapHeights: [CGFloat] = [110, 300, 520]
+    @State private var panelHeight: CGFloat = 300
     
     var activeTrip: TripRecord? {
         activeTrips.first
@@ -104,47 +108,30 @@ struct HomeView: View {
                         HubView(marker: marker)
                     }
                 }
-                
                 UserAnnotation()
             }
             .mapStyle(.standard)
-            .onAppear {
-                updateCameraPosition()
+            .mapControls {
+                MapUserLocationButton()
+                MapCompass()
             }
+            .onAppear { updateCameraPosition() }
             .onChange(of: mapMarkers.count) {
-                withAnimation(.spring()) {
-                    updateCameraPosition()
-                }
+                withAnimation(.spring()) { updateCameraPosition() }
             }
             .ignoresSafeArea()
-            
-            VStack {
-                // Top floating UI containing custom liquid glass controls
+
+            VStack(spacing: 0) {
+                // Top control bar
                 HStack {
                     Spacer()
-                    
-                    // Glassmorphic / Liquid Glass Control Bar
                     HStack(spacing: 16) {
                         Button(action: { isShowingProfileSheet = true }) {
                             Image(systemName: "person.crop.circle.fill")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.white.opacity(0.8))
                         }
-                        
-                        Divider()
-                            .frame(height: 20)
-                            .background(Color.white.opacity(0.2))
-                        
-                        Button(action: { isShowingAddTripSheet = true }) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.blue)
-                        }
-                        
-                        Divider()
-                            .frame(height: 20)
-                            .background(Color.white.opacity(0.2))
-                        
+                        Divider().frame(height: 20).background(Color.white.opacity(0.2))
                         Button(action: { isShowingSettingsSheet = true }) {
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 18, weight: .bold))
@@ -155,29 +142,39 @@ struct HomeView: View {
                     .padding(.vertical, 10)
                     .background(.ultraThinMaterial)
                     .cornerRadius(22)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22)
-                            .stroke(Color.white.opacity(0.15), lineWidth: 1)
-                    )
+                    .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.white.opacity(0.15), lineWidth: 1))
                     .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
                     .padding(.horizontal)
                     .padding(.top, 8)
                 }
-                
+
                 Spacer()
-                
-                // Bottom sliding control drawer (Frosted Glass Panel)
-                VStack(spacing: 12) {
-                    // Pill drag handle indicator
+
+                // Bottom draggable panel
+                VStack(spacing: 0) {
+                    // Drag handle
                     Capsule()
-                        .fill(Color.white.opacity(0.25))
+                        .fill(Color.white.opacity(0.3))
                         .frame(width: 36, height: 5)
-                        .padding(.top, 8)
-                    
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    let proposed = panelHeight - value.translation.height
+                                    panelHeight = min(max(proposed, snapHeights[0] - 30), snapHeights[2] + 30)
+                                }
+                                .onEnded { value in
+                                    let projected = panelHeight - value.predictedEndTranslation.height * 0.25
+                                    withAnimation(.interpolatingSpring(stiffness: 320, damping: 28)) {
+                                        panelHeight = snapHeights.min(by: { abs($0 - projected) < abs($1 - projected) })!
+                                    }
+                                }
+                        )
+
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 20) {
-                            
-                            // Active Trip Panel or Ready State
                             if let trip = activeTrip {
                                 activeTripCard(trip)
                                     .onAppear { updateTimer(for: trip) }
@@ -185,27 +182,17 @@ struct HomeView: View {
                             } else {
                                 readyStateCard
                             }
-                            
-                            // API Response Panel
                             if !api.lastReplies.isEmpty {
                                 repliesPanel
                             }
-                            
-                            // Quick Shortcuts (derived from recent trips)
-                            shortcutsSection
                         }
-                        .padding(.horizontal, 4)
-                        .padding(.bottom, 16)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
                     }
-                    .frame(maxHeight: 360)
                 }
-                .padding(.horizontal)
-                .background(.ultraThinMaterial)
-                .cornerRadius(30)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                )
+                .frame(height: panelHeight)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30))
+                .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.white.opacity(0.12), lineWidth: 1))
                 .shadow(color: Color.black.opacity(0.35), radius: 15, x: 0, y: -5)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 10)
@@ -247,16 +234,16 @@ struct HomeView: View {
             HStack {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.orange)
+                        .fill(Color.blue)
                         .frame(width: 6, height: 6)
                     Text("In Transit")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.orange)
+                        .foregroundColor(.blue)
                         .kerning(0.5)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.orange.opacity(0.12))
+                .background(Color.blue.opacity(0.12))
                 .cornerRadius(20)
                 
                 Spacer()
@@ -288,7 +275,7 @@ struct HomeView: View {
                                 .kerning(1)
                             Text(timeElapsed)
                                 .font(.system(size: 16, weight: .bold, design: .monospaced))
-                                .foregroundColor(.orange)
+                                .foregroundColor(.blue)
                         }
                     }
                     
@@ -329,7 +316,7 @@ struct HomeView: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
-                                .background(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.06) : Color.orange)
+                                .background(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.06) : Color.blue)
                                 .foregroundColor(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.3) : .white)
                                 .cornerRadius(12)
                         }
@@ -354,7 +341,7 @@ struct HomeView: View {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(pred.route)
                                                 .font(.system(size: 13, weight: .bold))
-                                                .foregroundColor(.orange)
+                                                .foregroundColor(.blue)
                                             if !pred.direction.isEmpty {
                                                 Text(pred.direction.uppercased())
                                                     .font(.system(size: 8, weight: .black))
@@ -398,7 +385,7 @@ struct HomeView: View {
                             .kerning(1)
                         Text(timeElapsed)
                             .font(.system(size: 16, weight: .bold, design: .monospaced))
-                            .foregroundColor(.orange)
+                            .foregroundColor(.blue)
                     }
                 }
             }
@@ -512,10 +499,10 @@ struct HomeView: View {
                             Spacer()
                         }
                         .padding(.vertical, 14)
-                        .background(trip.route.isEmpty ? Color.white.opacity(0.08) : Color.orange)
+                        .background(trip.route.isEmpty ? Color.white.opacity(0.08) : Color.blue)
                         .foregroundColor(trip.route.isEmpty ? Color.white.opacity(0.3) : .white)
                         .cornerRadius(12)
-                        .shadow(color: trip.route.isEmpty ? .clear : Color.orange.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .shadow(color: trip.route.isEmpty ? .clear : Color.blue.opacity(0.2), radius: 8, x: 0, y: 4)
                     }
                     .disabled(api.isSendingCommand || trip.route.isEmpty)
                     
@@ -534,14 +521,8 @@ struct HomeView: View {
             }
         }
         .padding(24)
-        .background(Color(hex: "0d1527"))
-        .cornerRadius(24)
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
     }
-    
+
     private var readyStateCard: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
@@ -583,19 +564,13 @@ struct HomeView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(LinearGradient(colors: [Color.orange, Color(hex: "ff6b35")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .background(LinearGradient(colors: [Color.blue, Color(hex: "0055ff")], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .foregroundColor(.white)
                 .cornerRadius(14)
-                .shadow(color: Color.orange.opacity(0.2), radius: 10, x: 0, y: 5)
+                .shadow(color: Color.blue.opacity(0.2), radius: 10, x: 0, y: 5)
             }
         }
         .padding(24)
-        .background(Color(hex: "0d1527"))
-        .cornerRadius(24)
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
     }
 
     private var repliesPanel: some View {
@@ -656,10 +631,10 @@ struct HomeView: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(shortcut.route)
                                         .font(.system(size: 10, weight: .black))
-                                        .foregroundColor(.orange)
+                                        .foregroundColor(.blue)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
-                                        .background(Color.orange.opacity(0.15))
+                                        .background(Color.blue.opacity(0.15))
                                         .cornerRadius(4)
 
                                     Text(shortcut.stopName)
@@ -876,7 +851,7 @@ struct HubView: View {
             // Pulsing glow for active trips
             if marker.isActive {
                 Circle()
-                    .stroke(Color.orange.opacity(0.5), lineWidth: 4)
+                    .stroke(Color.blue.opacity(0.5), lineWidth: 4)
                     .frame(width: 32, height: 32)
                     .scaleEffect(isAnimating ? 1.5 : 1.0)
                     .opacity(isAnimating ? 0 : 1)
@@ -888,7 +863,7 @@ struct HubView: View {
             }
             
             Circle()
-                .fill(marker.isActive ? Color.orange : Color.blue)
+                .fill(marker.isActive ? Color.blue : Color.blue)
                 .frame(width: 28, height: 28)
                 .shadow(color: .black.opacity(0.3), radius: 3)
             
