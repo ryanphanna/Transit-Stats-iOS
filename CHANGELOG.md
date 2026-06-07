@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **Ghost Active Trip**: Active trip query now filters to `isSynced == false` only, preventing historical open SMS trips synced from Firestore from appearing as "In Transit" on the home screen. Discarding a trip no longer surfaces the next open trip from history.
+
+### Changed
+- **Onboarding Flow**: Login screen is now a two-stage flow — a full landing screen showing app features ("Get Started" button) slides into the phone number entry form with a spring transition. Back button returns to landing.
+- **Draggable Home Panel**: Bottom panel is now a proper draggable sheet with three snap heights (compact, default, expanded) and spring snap-back animation.
+- **Map Controls**: Added locate me and compass buttons to the map via native MapKit controls.
+- **Removed Shortcuts Section**: Removed the Recent Shortcuts panel from the home screen.
+- **Blue Accent**: Replaced all orange accent colours with blue throughout HomeView and AddTripView.
+- **Trip History**: SMS-sourced trips with no stop name now display "Via SMS" instead of "Unknown origin" in trip history.
+- **Panel Layout**: Removed nested card background from active trip and ready state cards — content now sits directly on the frosted glass panel.
+
 ## [1.1.0] - 2026-06-05
 
 ### Added
