@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Elegant Map Markers**: Redesigned map markers to be more refined and integrated with the map. Active trips now feature a glowing, pulsing icon, while transit hubs are represented by high-contrast 'dots' with translucent borders. This replaces the basic numbered circles with a more professional, Apple Maps-inspired aesthetic.
 - **Standardized Panel Backgrounds**: Synchronized the background styling of the Home screen 'Ready' panel and the 'Add Trip' sheet. Both now use a consistent `ultraThinMaterial` for a cohesive, premium translucent look across the app.
 - **One-Tap 'Locate' in Logger**: Added a dedicated Locate button to the boarding logger (`AddTripView`). Tapping it instantly scans for nearby transit stops and surfaces them as one-tap chips, eliminating the need to type your current location.
 - **Dynamic Agency Stats**: The Agencies section on the Stats page now respects the year filter and is limited to your Top 5 most-used agencies, providing a cleaner and more relevant breakdown of your transit habits.

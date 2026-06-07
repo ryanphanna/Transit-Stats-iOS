@@ -887,42 +887,60 @@ struct HubView: View {
     
     var body: some View {
         ZStack {
-            // Pulsing glow for active trips
             if marker.isActive {
+                // Active trip: Glowing pulsing ring
                 Circle()
-                    .stroke(accent.opacity(0.5), lineWidth: 4)
-                    .frame(width: 32, height: 32)
-                    .scaleEffect(isAnimating ? 1.5 : 1.0)
-                    .opacity(isAnimating ? 0 : 1)
+                    .stroke(accent, lineWidth: 2)
+                    .frame(width: 36, height: 36)
+                    .scaleEffect(isAnimating ? 1.4 : 0.8)
+                    .opacity(isAnimating ? 0 : 0.6)
                     .onAppear {
-                        withAnimation(.easeOut(duration: 1.5).repeatForever(autoreverses: false)) {
+                        withAnimation(.easeOut(duration: 2).repeatForever(autoreverses: false)) {
                             isAnimating = true
                         }
                     }
-            }
-            
-            Circle()
-                .fill(accent)
-                .frame(width: 28, height: 28)
-                .shadow(color: .black.opacity(0.3), radius: 3)
-            
-            if marker.isActive {
+                
+                Circle()
+                    .fill(accent)
+                    .frame(width: 28, height: 28)
+                    .shadow(color: accent.opacity(0.4), radius: 8, x: 0, y: 4)
+                
                 Image(systemName: "tram.fill")
-                    .font(.system(size: 14))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
             } else {
-                Text("\(marker.count)")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
+                // Inactive hub: Elegant dot with border
+                ZStack {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 24, height: 24)
+                        .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                    
+                    Circle()
+                        .fill(accent.gradient)
+                        .frame(width: 10, height: 10)
+                        .shadow(color: accent.opacity(0.3), radius: 4)
+                    
+                    // Small subtle count badge if > 1
+                    if marker.count > 1 {
+                        Text("\(marker.count)")
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.black.opacity(0.6))
+                            .clipShape(Capsule())
+                            .offset(x: 10, y: -10)
+                    }
+                }
             }
         }
-        .scaleEffect(scaleForCount(marker.count))
-        .transition(.scale.combined(with: .opacity))
+        .scaleEffect(marker.isActive ? 1.1 : scaleForCount(marker.count))
+        .animation(.spring(), value: marker.isActive)
     }
     
     private func scaleForCount(_ count: Int) -> CGFloat {
-        if marker.isActive { return 1.1 }
-        // Scale hubs slightly based on frequency (1x to 1.5x)
-        return min(1.0 + CGFloat(count - 1) * 0.05, 1.5)
+        // Subtle scaling for frequency
+        min(0.9 + CGFloat(count - 1) * 0.03, 1.2)
     }
 }
