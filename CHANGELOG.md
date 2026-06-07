@@ -2,12 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.2.0] - 2026-06-07
+
+### Added
+- **Trip Detail View**: Tapping any trip in history opens a full detail sheet — large route badge, boarded/alighted timeline with stop names and times, duration/date/time stat pills, source, sync status, vehicle, and notes.
+- **Profile Picture**: Users can set a profile photo via the photo library. Photo is stored locally on-device (no upload). Appears on the transit card (tap to change) and in the Settings account row.
+- **Activity Heatmap**: Stats tab now shows a GitHub-style scrollable year heatmap. Each square is one day; colour intensity scales from 1 trip (faint) to 10+ trips (full accent). Computed on-device from local trip history — no network call.
+- **Home Agency on Transit Card**: Stats card now shows your most-used agency as a badge in the top-right corner of the transit card.
+- **Contact Us**: Settings now includes a Support section with a Contact Us link that opens Mail pre-addressed to hey@ryanisnota.pro with version number and short account ID in the subject line.
+
+### Fixed
+- **Start Trip button**: Tapping "Start New Trip" now correctly opens the trip logger. Previously the button was inside a sheet presenting another sheet, which iOS silently ignores.
+- **Settings button**: Same root cause as above — now works correctly.
+- **Tab bar hidden by panel**: Home screen panel is now a ZStack overlay (like Flighty) instead of a system sheet, so the tab bar stays fully visible at all times.
+- **Compass behind status bar**: Compass is now positioned above the locate button in the bottom-right corner instead of the top-right where it overlapped the battery indicator.
+- **Locate button zoom**: Tapping locate now zooms to street level (~400m radius) instead of city-wide.
+- **App display name**: App now shows as "Transit Stats" on the home screen instead of "Transit Stats iOS".
+- **Xcode warnings**: Eliminated `?? NSNull()` nil-coalescing warnings in `TransitStatsAPI.swift` by routing optional Firestore fields through a typed `nullable<T>` helper.
+
+### Refactored
+- **AppEnvironment**: Accent colour and home agency are now managed in a single `AppEnvironment` object injected at the root, eliminating duplicated `@AppStorage`/`topAgency`/`accent` declarations across five views.
 
 ### Fixed
 - **Ghost Active Trip**: Active trip query now filters to `isSynced == false` only, preventing historical open SMS trips synced from Firestore from appearing as "In Transit" on the home screen. Discarding a trip no longer surfaces the next open trip from history.
 
 ### Changed
+- **Trip Filters**: Trips history now has four filter rows — date range (All time / This week / This month / This year), source (All / App / SMS), and agency chips (one per agency in your history). All filters combine.
 - **Onboarding Flow**: Login screen is now a two-stage flow — a full landing screen showing app features ("Get Started" button) slides into the phone number entry form with a spring transition. Back button returns to landing.
 - **SMS Resend Cooldown**: After requesting a code, "Resend Code" is disabled for 60 seconds with a live countdown to prevent SMS spam.
 - **Streak Tracking**: Stats screen now shows current commute streak and all-time best streak, calculated from consecutive days with completed trips.

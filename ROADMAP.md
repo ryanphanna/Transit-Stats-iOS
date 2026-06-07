@@ -38,6 +38,12 @@ This roadmap outlines the planned features and platform-specific goals for the T
     *   *Smart Shortcut Ranking*: A lightweight on-device Core ML classifier trained on personal trip history ranks shortcuts by time of day and day of week, so the right route appears at the right time.
     *   *Trip Anomaly Detection*: Compare active trip duration against historical averages for the same route and prompt to end or discard if it runs unusually long — catching forgotten trips before they skew stats.
 
+*   **Leaderboard**:
+    *   Opt-in global leaderboard ranked by total trip count.
+    *   Each device computes its own count locally and writes a single `{ userId, tripCount, updatedAt }` document to a `leaderboard` Firestore collection — one write per sync, not a full trip scan.
+    *   A Cloud Function validates any `tripCount` that would land in the top 25 by cross-referencing the user's actual trips collection and correcting inflated values. Everyone outside the top 25 self-reports; only the spots that matter get verified.
+    *   Display as a ranked list with the current user's position highlighted, regardless of whether they're in the top N.
+
 *   **"Rocket" Research Instrument (Admin Only)**:
     *   Restricted to admin users; provides high-fidelity telemetry for transit research.
     *   *Background GPS breadcrumbing*: Record the entire journey path (high-frequency GPS) for the duration of the session.

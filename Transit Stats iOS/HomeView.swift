@@ -27,13 +27,8 @@ struct HomeView: View {
     
     @StateObject private var api = TransitStatsAPI.shared
     @StateObject private var locationManager = LocationManager.shared
-    @AppStorage("appAccent") private var accentKey: String = "blue"
-
-    private var topAgency: String? {
-        let groups = Dictionary(grouping: completedTrips.filter { !$0.agency.isEmpty }) { $0.agency }
-        return groups.max(by: { $0.value.count < $1.value.count })?.key
-    }
-    private var accent: Color { AppTheme(rawValue: accentKey)?.resolved(topAgency: topAgency) ?? .blue }
+    @EnvironmentObject private var appEnv: AppEnvironment
+    private var accent: Color { appEnv.accent }
     
     @State private var endStopText = ""
     @State private var showAlert = false
@@ -41,7 +36,13 @@ struct HomeView: View {
     @State private var isShowingAddTripSheet = false
     @State private var isShowingSettingsSheet = false
     @State private var activeRouteText = ""
-    
+
+    // Panel State
+    private let snapHeights: [CGFloat] = [120, 270, 540]
+    @State private var panelHeight: CGFloat = 270
+    @State private var dragOffset: CGFloat = 0
+    private var effectivePanelHeight: CGFloat { max(snapHeights[0], panelHeight + dragOffset) }
+
     // Map State
     @State private var cameraPosition: MapCameraPosition = .automatic
     
@@ -106,7 +107,6 @@ struct HomeView: View {
     @State private var timeElapsed = ""
     let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
-    @State private var panelDetent: PresentationDetent = .medium
     
     var activeTrip: TripRecord? {
         activeTrips.first
@@ -125,9 +125,7 @@ struct HomeView: View {
             }
             .preferredColorScheme(.dark)
             .mapStyle(.standard)
-            .mapControls {
-                MapCompass()
-            }
+            .mapControls { }
             .onAppear { updateCameraPosition() }
             .onChange(of: mapMarkers.count) {
                 withAnimation(.spring()) { updateCameraPosition() }
@@ -154,29 +152,92 @@ struct HomeView: View {
                 Spacer()
             }
 
-            // Locate button — bottom right
+            // Compass + Locate buttons — bottom right
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
-                    Button(action: {
-                        withAnimation(.spring()) {
-                            cameraPosition = .userLocation(followsHeading: false, fallback: .automatic)
+                    VStack(spacing: 10) {
+                        // Compass — resets to north-up
+                        MapCompass()
+                            .mapControlVisibility(.visible)
+
+                        // Locate me
+                        Button(action: {
+                            withAnimation(.spring()) {
+                                if let coord = locationManager.lastLocation?.coordinate {
+                                    cameraPosition = .region(MKCoordinateRegion(
+                                        center: coord,
+                                        span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.004)
+                                    ))
+                                } else {
+                                    cameraPosition = .userLocation(followsHeading: false, fallback: .automatic)
+                                }
+                            }
+                        }) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                                .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
                         }
-                    }) {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
-                            .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
                     }
                     .padding(.trailing, 16)
                 }
-                .padding(.bottom, 130)
+                .padding(.bottom, effectivePanelHeight + 16)
             }
+        // Bottom panel — ZStack overlay so the tab bar stays visible
+        VStack(spacing: 0) {
+            Spacer()
+            VStack(spacing: 0) {
+                // Drag handle
+                Capsule()
+                    .fill(Color.white.opacity(0.25))
+                    .frame(width: 36, height: 4)
+                    .padding(.top, 10)
+                    .padding(.bottom, 4)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        if let trip = activeTrip {
+                            activeTripCard(trip)
+                                .onAppear { updateTimer(for: trip) }
+                                .onReceive(timer) { _ in updateTimer(for: trip) }
+                        } else {
+                            readyStateCard
+                        }
+                        if !api.lastReplies.isEmpty {
+                            repliesPanel
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 24)
+                }
+            }
+            .frame(height: effectivePanelHeight)
+            .background(.ultraThinMaterial)
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
+            .overlay(
+                UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+            .gesture(
+                DragGesture()
+                    .onChanged { value in dragOffset = -value.translation.height }
+                    .onEnded { _ in
+                        let nearest = snapHeights.min(by: { abs($0 - effectivePanelHeight) < abs($1 - effectivePanelHeight) }) ?? 270
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                            panelHeight = nearest
+                            dragOffset = 0
+                        }
+                    }
+            )
+        }
+        .ignoresSafeArea(edges: .bottom)
         }
         .preferredColorScheme(.dark)
         .onAppear {
@@ -186,35 +247,11 @@ struct HomeView: View {
         .onDisappear {
             locationManager.stopUpdating()
         }
-        .sheet(isPresented: .constant(true)) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    if let trip = activeTrip {
-                        activeTripCard(trip)
-                            .onAppear { updateTimer(for: trip) }
-                            .onReceive(timer) { _ in updateTimer(for: trip) }
-                    } else {
-                        readyStateCard
-                    }
-                    if !api.lastReplies.isEmpty {
-                        repliesPanel
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 4)
-                .padding(.bottom, 40)
-            }
-            .presentationDetents([.height(110), .medium, .large], selection: $panelDetent)
-            .presentationDragIndicator(.visible)
-            .presentationBackground(.ultraThinMaterial)
-            .interactiveDismissDisabled()
-            .presentationCornerRadius(28)
-            .sheet(isPresented: $isShowingAddTripSheet) {
-                AddTripView()
-            }
-            .sheet(isPresented: $isShowingSettingsSheet) {
-                SettingsView()
-            }
+        .sheet(isPresented: $isShowingAddTripSheet) {
+            AddTripView()
+        }
+        .sheet(isPresented: $isShowingSettingsSheet) {
+            SettingsView()
         }
         .alert("API Error", isPresented: Binding(
             get: { api.lastError != nil },
@@ -844,8 +881,8 @@ struct TripMarker: Identifiable {
 
 struct HubView: View {
     let marker: TripMarker
-    @AppStorage("appAccent") private var accentKey: String = "blue"
-    private var accent: Color { AppTheme(rawValue: accentKey)?.swatchColor ?? .blue }
+    @EnvironmentObject private var appEnv: AppEnvironment
+    private var accent: Color { appEnv.accent }
     @State private var isAnimating = false
     
     var body: some View {

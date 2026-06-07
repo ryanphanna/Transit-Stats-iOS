@@ -1,21 +1,19 @@
 import SwiftUI
 import Charts
 import SwiftData
+import PhotosUI
 
 struct StatsView: View {
     @Query(sort: \TripRecord.startTime, order: .reverse) private var allTrips: [TripRecord]
     @Query private var profiles: [UserProfile]
     @Query private var accuracies: [PredictionAccuracy]
+    @EnvironmentObject private var appEnv: AppEnvironment
     @State private var selectedYear: Int? = nil
-    @AppStorage("appAccent") private var accentKey: String = "blue"
+    @State private var profileImage: UIImage? = nil
+    @State private var pickerItem: PhotosPickerItem? = nil
 
     private var profile: UserProfile? { profiles.first }
-
-    private var topAgency: String? {
-        let groups = Dictionary(grouping: allTrips.filter { !$0.agency.isEmpty }) { $0.agency }
-        return groups.max(by: { $0.value.count < $1.value.count })?.key
-    }
-    private var accent: Color { AppTheme(rawValue: accentKey)?.resolved(topAgency: topAgency) ?? .blue }
+    private var accent: Color { appEnv.accent }
 
     private var availableYears: [Int] {
         let calendar = Calendar.current
@@ -176,6 +174,9 @@ struct StatsView: View {
                         streakCard
                             .padding(.horizontal, 20)
 
+                        // Activity heatmap
+                        heatmapCard
+
                         // Agencies
                         if agencyStats.count > 1 {
                             VStack(alignment: .leading, spacing: 10) {
@@ -255,6 +256,16 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("Stats")
+        }
+        .onAppear { profileImage = ProfileImageManager.shared.load() }
+        .onChange(of: pickerItem) { _, item in
+            Task {
+                if let data = try? await item?.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    ProfileImageManager.shared.save(image)
+                    profileImage = image
+                }
+            }
         }
     }
 
@@ -385,31 +396,45 @@ struct StatsView: View {
                 ), lineWidth: 1)
 
             VStack(alignment: .leading, spacing: 0) {
-                HStack {
+                // Card header
+                HStack(alignment: .center) {
                     Image(systemName: "tram.circle.fill")
-                        .font(.system(size: 28))
+                        .font(.system(size: 26))
                         .foregroundColor(accent)
                     Text("TRANSIT STATS")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundColor(.white)
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundColor(.white.opacity(0.7))
                         .kerning(1.5)
                     Spacer()
-                    ZStack {
-                        Circle()
-                            .fill(accent.opacity(0.2))
-                            .frame(width: 40, height: 40)
-                        Text(profile?.nickname?.prefix(1).uppercased() ?? "T")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(accent)
+                    // Profile photo — tap to change
+                    PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+                        ZStack {
+                            if let img = profileImage {
+                                Image(uiImage: img)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 44, height: 44)
+                                    .clipShape(Circle())
+                            } else {
+                                Circle()
+                                    .fill(accent.opacity(0.15))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(accent.opacity(0.6))
+                            }
+                        }
+                        .overlay(Circle().stroke(accent.opacity(0.3), lineWidth: 1))
                     }
                 }
                 .padding(24)
+                .padding(.bottom, 0)
 
                 Spacer()
 
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("MEMBER SINCE")
+                        Text("SINCE")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundColor(.white.opacity(0.4))
                         Text(joinDate)
@@ -418,7 +443,7 @@ struct StatsView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text("RANK")
+                        Text("STATUS")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundColor(.white.opacity(0.4))
                         Text(rank)
@@ -521,5 +546,116 @@ struct StatsView: View {
         )
         .cornerRadius(20)
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
+    }
+
+    // MARK: - Activity Heatmap
+
+    private var heatmapCounts: [Date: Int] {
+        let cal = Calendar.current
+        var counts: [Date: Int] = [:]
+        for trip in allTrips {
+            let day = cal.startOfDay(for: trip.startTime)
+            counts[day, default: 0] += 1
+        }
+        return counts
+    }
+
+    private var heatmapWeeks: [Date] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let weekday = cal.component(.weekday, from: today)
+        let thisSunday = cal.date(byAdding: .day, value: -(weekday - 1), to: today)!
+        return (0...52).reversed().compactMap { cal.date(byAdding: .weekOfYear, value: -$0, to: thisSunday) }
+    }
+
+    private func heatmapColor(for date: Date) -> Color {
+        let today = Calendar.current.startOfDay(for: Date())
+        guard date <= today else { return .clear }
+        let count = heatmapCounts[date] ?? 0
+        guard count > 0 else { return Color.white.opacity(0.07) }
+        let intensity = 0.15 + min(Double(count), 10.0) / 10.0 * 0.85
+        return accent.opacity(intensity)
+    }
+
+    private var heatmapCard: some View {
+        let cal = Calendar.current
+        let weeks = heatmapWeeks
+        let monthFmt: DateFormatter = {
+            let f = DateFormatter(); f.dateFormat = "MMM"; return f
+        }()
+
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("ACTIVITY")
+                .font(.system(size: 10, weight: .black))
+                .foregroundColor(.white.opacity(0.4))
+                .kerning(1.5)
+                .padding(.horizontal, 20)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                ScrollViewReader { proxy in
+                    HStack(alignment: .top, spacing: 3) {
+                        // Day-of-week labels
+                        VStack(spacing: 0) {
+                            Color.clear.frame(height: 16)
+                            VStack(spacing: 3) {
+                                ForEach(["S","M","T","W","T","F","S"], id: \.self) { label in
+                                    Text(label)
+                                        .font(.system(size: 7, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.25))
+                                        .frame(width: 11, height: 11)
+                                }
+                            }
+                        }
+                        .padding(.trailing, 2)
+
+                        // Week columns
+                        ForEach(Array(weeks.enumerated()), id: \.offset) { idx, weekStart in
+                            VStack(spacing: 0) {
+                                // Month label
+                                let showMonth = idx == 0 || cal.component(.month, from: weekStart) != cal.component(.month, from: weeks[idx - 1])
+                                if showMonth {
+                                    Text(monthFmt.string(from: weekStart))
+                                        .font(.system(size: 7, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.35))
+                                        .frame(height: 16, alignment: .leading)
+                                        .fixedSize()
+                                } else {
+                                    Color.clear.frame(height: 16)
+                                }
+
+                                VStack(spacing: 3) {
+                                    ForEach(0..<7, id: \.self) { dayOffset in
+                                        let date = cal.date(byAdding: .day, value: dayOffset, to: weekStart) ?? weekStart
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(heatmapColor(for: date))
+                                            .frame(width: 11, height: 11)
+                                    }
+                                }
+                            }
+                            .frame(width: 11)
+                            .id(idx)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .onAppear { proxy.scrollTo(weeks.count - 1, anchor: .trailing) }
+                }
+            }
+
+            // Legend
+            HStack(spacing: 4) {
+                Text("Less")
+                    .font(.system(size: 9))
+                    .foregroundColor(.white.opacity(0.25))
+                ForEach([0, 2, 4, 6, 8, 10], id: \.self) { level in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(level == 0 ? Color.white.opacity(0.07) : accent.opacity(0.15 + Double(level) / 10.0 * 0.85))
+                        .frame(width: 11, height: 11)
+                }
+                Text("More")
+                    .font(.system(size: 9))
+                    .foregroundColor(.white.opacity(0.25))
+            }
+            .padding(.horizontal, 20)
+        }
     }
 }

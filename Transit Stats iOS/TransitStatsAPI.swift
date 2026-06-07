@@ -144,28 +144,32 @@ class TransitStatsAPI: ObservableObject {
         try await db.collection("trips").document(tripId).delete()
     }
 
+    private func nullable<T>(_ value: T?) -> Any {
+        value.map { $0 as Any } ?? NSNull()
+    }
+
     /// Uploads a completed TripRecord directly to Firestore.
     func uploadTrip(_ trip: TripRecord) async throws {
         let db = Firestore.firestore()
-        
+
         let data: [String: Any] = [
             "route": trip.route,
             "direction": trip.direction,
             "agency": trip.agency,
             "startTime": Timestamp(date: trip.startTime),
-            "endTime": trip.endTime != nil ? Timestamp(date: trip.endTime!) : NSNull(),
-            "startStopCode": (trip.startStopCode as Any) ?? NSNull(),
-            "startStopName": (trip.startStopName as Any) ?? NSNull(),
-            "endStopCode": (trip.endStopCode as Any) ?? NSNull(),
-            "endStopName": (trip.endStopName as Any) ?? NSNull(),
-            "startLatitude": (trip.startLatitude as Any) ?? NSNull(),
-            "startLongitude": (trip.startLongitude as Any) ?? NSNull(),
-            "endLatitude": (trip.endLatitude as Any) ?? NSNull(),
-            "endLongitude": (trip.endLongitude as Any) ?? NSNull(),
-            "startAccuracy": (trip.startAccuracy as Any) ?? NSNull(),
-            "endAccuracy": (trip.endAccuracy as Any) ?? NSNull(),
-            "notes": (trip.notes as Any) ?? NSNull(),
-            "vehicle": (trip.vehicle as Any) ?? NSNull(),
+            "endTime": trip.endTime.map { Timestamp(date: $0) } ?? NSNull(),
+            "startStopCode": nullable(trip.startStopCode),
+            "startStopName": nullable(trip.startStopName),
+            "endStopCode": nullable(trip.endStopCode),
+            "endStopName": nullable(trip.endStopName),
+            "startLatitude": nullable(trip.startLatitude),
+            "startLongitude": nullable(trip.startLongitude),
+            "endLatitude": nullable(trip.endLatitude),
+            "endLongitude": nullable(trip.endLongitude),
+            "startAccuracy": nullable(trip.startAccuracy),
+            "endAccuracy": nullable(trip.endAccuracy),
+            "notes": nullable(trip.notes),
+            "vehicle": nullable(trip.vehicle),
             "source": trip.source,
             "isPublic": trip.isPublic,
             "timezone": trip.timezone,
@@ -174,7 +178,7 @@ class TransitStatsAPI: ObservableObject {
                 "lat": $0.lat,
                 "lon": $0.lon,
                 "timestamp": Timestamp(date: $0.timestamp),
-                "speed": ($0.speed as Any) ?? NSNull()
+                "speed": nullable($0.speed)
             ] }
         ]
         
