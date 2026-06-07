@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Standardized Panel Backgrounds**: Synchronized the background styling of the Home screen 'Ready' panel and the 'Add Trip' sheet. Both now use a consistent `ultraThinMaterial` for a cohesive, premium translucent look across the app.
 - **One-Tap 'Locate' in Logger**: Added a dedicated Locate button to the boarding logger (`AddTripView`). Tapping it instantly scans for nearby transit stops and surfaces them as one-tap chips, eliminating the need to type your current location.
 - **Dynamic Agency Stats**: The Agencies section on the Stats page now respects the year filter and is limited to your Top 5 most-used agencies, providing a cleaner and more relevant breakdown of your transit habits.
 - **Stats Year Picker Relocation**: Moved the year filter ("All Time", "2026", etc.) from the main scroll view to a clean `Menu` in the top-right of the navigation bar. This declutters the Stats page and provides a more native iOS filtering experience.
@@ -13,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors (backgrounds, gradients) and eliminate hardcoded hex strings.
 
 ### Fixed
+- **Settings Hierarchy**: Refactored the Account section to prioritize the user's name/nickname, with the masked Account ID moved to a secondary, smaller position. Relocated "Home Agency" to a new dedicated Preferences section to improve information hierarchy.
 - **Rank Terminology**: Updated the top-tier user rank from "System Master" to "System Elite" for more inclusive and professional terminology.
 - **Home Panel Layout**: Fixed an issue where the "Start New Trip" and "Complete Journey" buttons were partially cut off by the system tab bar. Increased bottom padding for the Home screen panel to ensure full visibility.
 - **UI Clarification**: Replaced the confusing "Standby" badge on the Home screen with a clearer "Ready" indicator and an active green status dot.

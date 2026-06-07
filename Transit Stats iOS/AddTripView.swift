@@ -118,7 +118,7 @@ struct AddTripView: View {
 
     var body: some View {
         ZStack {
-            Color(hex: "0a0f1e").ignoresSafeArea()
+            Color.clear.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Drag handle
@@ -737,6 +737,8 @@ struct AddTripView: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
         }
+        .presentationBackground(.ultraThinMaterial)
+        .presentationCornerRadius(28)
     }
 
     // MARK: - Step Indicator

@@ -40,16 +40,25 @@ struct SettingsView: View {
                             .overlay(Circle().stroke(accent.opacity(0.25), lineWidth: 1))
                         }
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Account ID: \(authManager.currentUser?.uid.prefix(4) ?? "")••••\(authManager.currentUser?.uid.suffix(4) ?? "")")
+                            Text(profile?.nickname ?? authManager.currentUser?.email?.components(separatedBy: "@").first ?? "User")
                                 .fontWeight(.semibold)
-                            if let agency = appEnv.homeAgency {
-                                Text("Home agency: \(agency)")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
+                            Text("Account ID: \(authManager.currentUser?.uid.prefix(4) ?? "")••••\(authManager.currentUser?.uid.suffix(4) ?? "")")
+                                .font(.caption)
+                                .foregroundColor(.gray)
                         }
                     }
                     .padding(.vertical, 4)
+                }
+
+                if let agency = appEnv.homeAgency {
+                    Section("Preferences") {
+                        HStack {
+                            Text("Home Agency")
+                            Spacer()
+                            Text(agency)
+                                .foregroundColor(.gray)
+                        }
+                    }
                 }
 
                 Section("Plan") {
