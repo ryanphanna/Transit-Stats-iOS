@@ -23,6 +23,7 @@ struct HomeView: View {
     private var completedTrips: [TripRecord]
     
     @Query private var hubsLibrary: [Hub]
+    @Query private var stopsLibrary: [Stop]
     
     @StateObject private var api = TransitStatsAPI.shared
     @StateObject private var locationManager = LocationManager.shared
@@ -39,16 +40,24 @@ struct HomeView: View {
     
     private var mapMarkers: [TripMarker] {
         var hubs: [String: (lat: Double, lon: Double, count: Int, route: String)] = [:]
-        
-        // Group all completed trips into hubs by stop name
+
         for trip in completedTrips {
-            guard let name = trip.startStopName ?? trip.startStopCode,
-                  let lat = trip.startLatitude,
-                  let lon = trip.startLongitude else { continue }
-            
-            // Background GPS validation: Skip inaccurate data (> 65m) for map visualization
-            if let accuracy = trip.startAccuracy, accuracy > 65 { continue }
-            
+            guard let name = trip.startStopName ?? trip.startStopCode else { continue }
+
+            // Prefer trip GPS; fall back to stop library coordinates
+            let lat: Double
+            let lon: Double
+            if let tLat = trip.startLatitude, let tLon = trip.startLongitude,
+               trip.startAccuracy.map({ $0 <= 65 }) ?? true {
+                lat = tLat; lon = tLon
+            } else if let stop = stopsLibrary.first(where: {
+                $0.code == trip.startStopCode || $0.name == trip.startStopName
+            }) {
+                lat = stop.latitude; lon = stop.longitude
+            } else {
+                continue
+            }
+
             if var existing = hubs[name] {
                 existing.count += 1
                 hubs[name] = existing
