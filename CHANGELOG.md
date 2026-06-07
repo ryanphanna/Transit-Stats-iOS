@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **Onboarding Flow**: Login screen is now a two-stage flow — a full landing screen showing app features ("Get Started" button) slides into the phone number entry form with a spring transition. Back button returns to landing.
+- **SMS Resend Cooldown**: After requesting a code, "Resend Code" is disabled for 60 seconds with a live countdown to prevent SMS spam.
 - **Draggable Home Panel**: Bottom panel is now a proper draggable sheet with three snap heights (compact, default, expanded) and spring snap-back animation.
 - **Map Controls**: Added locate me and compass buttons to the map via native MapKit controls.
 - **Removed Shortcuts Section**: Removed the Recent Shortcuts panel from the home screen.

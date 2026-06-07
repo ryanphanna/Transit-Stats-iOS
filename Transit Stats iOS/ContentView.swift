@@ -55,6 +55,7 @@ struct LoginView: View {
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
     @State private var showingLogin = false
+    @State private var resendCooldown: Int = 0
 
     @StateObject private var api = TransitStatsAPI.shared
 
@@ -286,10 +287,11 @@ struct LoginView: View {
                         }
                         Spacer()
                         Button(action: requestOtp) {
-                            Text("Resend Code")
+                            Text(resendCooldown > 0 ? "Resend in \(resendCooldown)s" : "Resend Code")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.35))
+                                .foregroundColor(resendCooldown > 0 ? .white.opacity(0.2) : .white.opacity(0.35))
                         }
+                        .disabled(resendCooldown > 0)
                     }
                 }
             }
@@ -326,19 +328,30 @@ struct LoginView: View {
     private func requestOtp() {
         isLoading = true
         errorMessage = nil
-        
+
         Task {
             do {
                 try await api.requestOtp(phoneNumber: phoneNumber)
                 await MainActor.run {
                     isLoading = false
                     isEnteringCode = true
+                    startResendCooldown()
                 }
             } catch {
                 await MainActor.run {
                     isLoading = false
                     errorMessage = error.localizedDescription
                 }
+            }
+        }
+    }
+
+    private func startResendCooldown() {
+        resendCooldown = 60
+        Task {
+            while resendCooldown > 0 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await MainActor.run { resendCooldown -= 1 }
             }
         }
     }
