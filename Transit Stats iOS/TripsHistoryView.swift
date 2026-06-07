@@ -4,6 +4,7 @@ import FirebaseAuth
 import PhotosUI
 
 struct TripsHistoryView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appEnv: AppEnvironment
     @Query(sort: \TripRecord.startTime, order: .reverse) private var trips: [TripRecord]
     @State private var selectedTrip: TripRecord? = nil
@@ -116,6 +117,18 @@ struct TripsHistoryView: View {
                                     TripRow(trip: trip)
                                 }
                                 .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button(role: .destructive, action: { deleteTrip(trip) }) {
+                                        Label("Delete Trip", systemImage: "trash")
+                                    }
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        deleteTrip(trip)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -138,6 +151,13 @@ struct TripsHistoryView: View {
         }
         .sheet(item: $selectedTrip) { trip in
             TripDetailView(trip: trip)
+        }
+    }
+
+    private func deleteTrip(_ trip: TripRecord) {
+        withAnimation {
+            modelContext.delete(trip)
+            try? modelContext.save()
         }
     }
 

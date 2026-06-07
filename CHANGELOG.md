@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Trip Deletion**: Added support for deleting trips directly from the history tab. Users can now use a 'swipe-to-delete' gesture or a long-press context menu to remove incorrect or unwanted trip entries.
 - **Final Design Polish & Branding**: Standardized the entire app's color palette (Deep Navy, Brand Blue) and updated the `LoginView` to match the premium dark theme.
 - **Empty State Views**: Implemented a "No Trips Yet" view in the history tab to provide a better experience for new users.
 - **Responsive Home Panel**: Refactored the bottom panel on the Home screen to use a dedicated drag zone at the top. This eliminates gesture conflicts with the internal scroll view, making it much easier to swipe the panel up and down.
