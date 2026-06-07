@@ -737,7 +737,8 @@ struct AddTripView: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
         }
-        .presentationBackground(.ultraThinMaterial)
+        .presentationBackground(Color.appBackground)
+        .presentationBackgroundInteraction(.enabled(upThrough: .medium))
         .presentationCornerRadius(28)
     }
 

@@ -234,6 +234,7 @@ struct HomeView: View {
                 }
             }
             .frame(height: effectivePanelHeight)
+            .background(Color.appBackground)
             .background(.ultraThinMaterial)
             .clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
             .overlay(
