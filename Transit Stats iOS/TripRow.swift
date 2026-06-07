@@ -68,18 +68,21 @@ struct TripRow: View {
                         .foregroundColor(accent)
                 }
                 
-                if trip.isSynced {
-                    HStack(spacing: 3) {
-                        Text("VERIFIED")
-                            .font(.system(size: 8, weight: .black))
+                HStack(spacing: 6) {
+                    // Source Icon
+                    Image(systemName: trip.source == "sms" ? "message.fill" : "iphone")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.25))
+
+                    if trip.isSynced {
                         Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(accent.opacity(0.8))
+                    } else {
+                        Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.4))
                     }
-                    .foregroundColor(accent.opacity(0.8))
-                } else {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
                 }
             }
         }

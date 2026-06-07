@@ -386,81 +386,105 @@ struct StatsView: View {
 
     private var transitCard: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 24)
-                .fill(LinearGradient(
-                    colors: [Color(hex: "0d1b3e"), Color(hex: "0a0f1e")],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .shadow(color: .black.opacity(0.5), radius: 15, x: 0, y: 10)
+            // Background Layer: Deep Navy with a mesh-like gradient glow
+            RoundedRectangle(cornerRadius: 28)
+                .fill(Color(hex: "020617"))
+            
+            // Subtle "Holographic" shimmer
+            RoundedRectangle(cornerRadius: 28)
+                .fill(
+                    LinearGradient(
+                        colors: [accent.opacity(0.1), .clear, accent.opacity(0.05)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
 
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(LinearGradient(
-                    colors: [.white.opacity(0.3), .clear, .white.opacity(0.15)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ), lineWidth: 1)
-
+            // Content
             VStack(alignment: .leading, spacing: 0) {
-                // Card header
+                // Logo & Branding
                 HStack(alignment: .center) {
-                    Image(systemName: "tram.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundColor(accent)
-                    Text("TRANSIT STATS")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundColor(.white.opacity(0.7))
-                        .kerning(1.5)
+                    HStack(spacing: 8) {
+                        Image(systemName: "tram.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(accent)
+                            .frame(width: 32, height: 32)
+                            .background(accent.opacity(0.15))
+                            .clipShape(Circle())
+                        
+                        Text("TRANSIT PASS")
+                            .font(.system(size: 12, weight: .black))
+                            .foregroundColor(.white.opacity(0.9))
+                            .kerning(1.5)
+                    }
+                    
                     Spacer()
-                    // Profile photo — tap to change
+                    
+                    // Profile photo
                     PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
                         ZStack {
                             if let img = profileImage {
                                 Image(uiImage: img)
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(width: 44, height: 44)
+                                    .frame(width: 50, height: 50)
                                     .clipShape(Circle())
                             } else {
                                 Circle()
-                                    .fill(accent.opacity(0.15))
-                                    .frame(width: 44, height: 44)
+                                    .fill(accent.opacity(0.12))
+                                    .frame(width: 50, height: 50)
                                 Image(systemName: "person.fill")
-                                    .font(.system(size: 18))
+                                    .font(.system(size: 22))
                                     .foregroundColor(accent.opacity(0.6))
                             }
                         }
                         .overlay(Circle().stroke(accent.opacity(0.3), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.3), radius: 5)
                     }
                 }
-                .padding(24)
-                .padding(.bottom, 0)
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
 
                 Spacer()
 
-                HStack(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("SINCE")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.white.opacity(0.4))
-                        Text(joinDate)
-                            .font(.system(size: 15, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("STATUS")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.white.opacity(0.4))
-                        Text(rank)
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                // Name & Rank
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(profile?.nickname ?? "TRANSIT RIDER")
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                        .kerning(-0.5)
+                    
+                    HStack(spacing: 8) {
+                        Text(rank.uppercased())
+                            .font(.system(size: 10, weight: .black))
                             .foregroundColor(accent)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(accent.opacity(0.12))
+                            .cornerRadius(6)
+                        
+                        Text("SINCE \(joinDate)")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.35))
                     }
                 }
-                .padding(24)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
             }
         }
-        .frame(height: 200)
+        .frame(height: 190)
+        .overlay(
+            RoundedRectangle(cornerRadius: 28)
+                .stroke(
+                    LinearGradient(
+                        colors: [.white.opacity(0.25), .clear, .white.opacity(0.1)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: .black.opacity(0.4), radius: 15, x: 0, y: 8)
     }
 
     // MARK: - Agency Row
