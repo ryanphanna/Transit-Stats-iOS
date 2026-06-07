@@ -532,7 +532,7 @@ struct SettingsView: View {
                         Image(systemName: "person.circle.fill")
                             .font(.largeTitle)
                             .foregroundColor(.blue)
-                        
+
                         VStack(alignment: .leading) {
                             Text(profile?.nickname ?? authManager.currentUser?.email ?? "User")
                                 .fontWeight(.semibold)
@@ -543,19 +543,42 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                
+
+                Section("Plan") {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(profile?.isPremium == true ? "Transit Stats Premium" : "Transit Stats Free")
+                                .fontWeight(.semibold)
+                            Text(profile?.isPremium == true ? "All features unlocked" : "Basic trip logging")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        Spacer()
+                        if profile?.isPremium == true {
+                            Text("ACTIVE")
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.blue.opacity(0.12))
+                                .cornerRadius(6)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+
                 if profile?.isAdmin == true {
-                    Section("Lab Features (Admin)") {
+                    Section("Developer") {
                         Toggle(isOn: $locationManager.isHighFidelityEnabled) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("High Fidelity Location")
+                                Text("Breadcrumb Tracking")
                                     .fontWeight(.medium)
-                                Text("Records full path breadcrumbs during trips. High battery usage.")
+                                Text("Records GPS path during trips. Higher battery usage.")
                                     .font(.caption2)
                                     .foregroundColor(.gray)
                             }
                         }
-                        .tint(.orange)
+                        .tint(.blue)
                     }
                 }
                 
