@@ -331,24 +331,24 @@ struct HomeView: View {
                                             try? modelContext.save()
                                         }
                                     }) {
-                                        VStack(alignment: .leading, spacing: 4) {
+                                        VStack(alignment: .leading, spacing: 5) {
                                             Text(pred.route)
-                                                .font(.system(size: 13, weight: .bold))
+                                                .font(.system(size: 18, weight: .black, design: .rounded))
                                                 .foregroundColor(.blue)
                                             if !pred.direction.isEmpty {
                                                 Text(pred.direction.uppercased())
-                                                    .font(.system(size: 8, weight: .black))
+                                                    .font(.system(size: 9, weight: .black))
                                                     .foregroundColor(.white.opacity(0.4))
                                                     .kerning(0.5)
                                             }
                                         }
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
                                         .background(Color.white.opacity(0.08))
-                                        .cornerRadius(10)
+                                        .cornerRadius(12)
                                         .overlay(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
                                         )
                                     }
                                 }
