@@ -48,6 +48,43 @@ struct StatsView: View {
         topRoutes.first?.route ?? "N/A"
     }
 
+    private var tripDaySet: Set<Date> {
+        let calendar = Calendar.current
+        let allCompleted = allTrips.filter { $0.endTime != nil }
+        return Set(allCompleted.map { calendar.startOfDay(for: $0.startTime) })
+    }
+
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        var checkDate = tripDaySet.contains(today)
+            ? today
+            : calendar.date(byAdding: .day, value: -1, to: today)!
+        var streak = 0
+        while tripDaySet.contains(checkDate) {
+            streak += 1
+            checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate)!
+        }
+        return streak
+    }
+
+    private var longestStreak: Int {
+        let days = tripDaySet.sorted()
+        guard !days.isEmpty else { return 0 }
+        let calendar = Calendar.current
+        var longest = 1, current = 1
+        for i in 1..<days.count {
+            let diff = calendar.dateComponents([.day], from: days[i-1], to: days[i]).day ?? 0
+            if diff == 1 {
+                current += 1
+                if current > longest { longest = current }
+            } else {
+                current = 1
+            }
+        }
+        return longest
+    }
+
     private var rank: String {
         let count = allTrips.count
         if count < 10  { return "New Rider" }
@@ -126,6 +163,10 @@ struct StatsView: View {
 
                         // Passport card
                         passportCard
+                            .padding(.horizontal, 20)
+
+                        // Streaks
+                        streakCard
                             .padding(.horizontal, 20)
 
                         // Agencies
@@ -418,5 +459,60 @@ struct StatsView: View {
         .background(Color.white.opacity(0.04))
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.06), lineWidth: 1))
+    }
+
+    // MARK: - Streak Card
+
+    private var streakCard: some View {
+        HStack(spacing: 0) {
+            // Current streak
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text("🔥")
+                        .font(.system(size: 18))
+                    Text("STREAK")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundColor(.white.opacity(0.4))
+                        .kerning(1.5)
+                }
+                Text("\(currentStreak)")
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .foregroundColor(currentStreak > 0 ? .white : .white.opacity(0.3))
+                Text(currentStreak == 1 ? "day" : "days")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.35))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+
+            Divider()
+                .background(Color.white.opacity(0.08))
+                .frame(height: 60)
+
+            // Best streak
+            VStack(alignment: .leading, spacing: 4) {
+                Text("BEST")
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundColor(.white.opacity(0.4))
+                    .kerning(1.5)
+                Text("\(longestStreak)")
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.5))
+                Text(longestStreak == 1 ? "day" : "days")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.25))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "0d1b3e"), Color(hex: "0a0f1e")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
     }
 }
