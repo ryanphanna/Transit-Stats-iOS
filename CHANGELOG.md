@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Centralized App Constants**: Moved app version, support email, and platform name to `AppEnvironment` for single-point management.
+- **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors (backgrounds, gradients) and eliminate hardcoded hex strings.
+
+### Refactored
+- **Modular View Architecture**: Split the monolithic `ContentView.swift` (1000+ lines) into focused, maintainable files: `LoginView`, `MainTabView`, `TripsHistoryView`, `TripRow`, `TripDetailView`, and `SettingsView`.
+- **Dynamic Versioning**: UI now automatically pulls the marketing version from the app Bundle.
+
 ## [1.2.0] - 2026-06-07
 
 ### Added

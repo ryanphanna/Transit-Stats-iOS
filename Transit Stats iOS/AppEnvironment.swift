@@ -10,4 +10,11 @@ final class AppEnvironment: ObservableObject {
     var accent: Color {
         AppTheme(rawValue: accentKey)?.resolved(topAgency: homeAgency) ?? .blue
     }
+
+    static var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }
+
+    static let supportEmail = "hey@ryanisnota.pro"
+    static let platformName = "iOS Native"
 }
