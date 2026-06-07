@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Trips Panel Architecture**: Refactored the Trips History view to use a draggable bottom panel over a map background, matching the Home screen's aesthetic. The search bar is now integrated into the panel's header for instant access, creating a more immersive and cohesive navigation experience.
 - **Trip Path Visualization**: Integrated a mini-map into the Trip Detail view that visualizes your journey. If high-fidelity tracking was enabled, it displays the full 'breadcrumb' path as a polyline; otherwise, it shows markers for your boarding and alighting points.
 - **High-Fidelity Tracking Optimization**: Refactored the `LocationManager` to use `kCLDistanceFilterNone` when breadcrumb tracking is active, ensuring the most precise coordinate capture possible.
 - **Map Heatmap Visualization**: Replaced numbered map markers with a clean heatmap system. Hubs now use color opacity and subtle scaling to indicate trip frequency, creating a more intuitive spatial data visualization. Removed text labels from markers for a minimalist, immersive map experience.
