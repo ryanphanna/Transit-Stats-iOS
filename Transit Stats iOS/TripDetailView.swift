@@ -115,11 +115,11 @@ struct TripDetailView: View {
                                 }
                                 .padding(.vertical, 4)
 
-                                // Alighted
+                                // Exited
                                 timelineRow(
                                     icon: "arrow.down.right.circle.fill",
                                     iconColor: .white.opacity(0.2),
-                                    label: "Alighted",
+                                    label: "Exited",
                                     stop: trip.endStopName ?? trip.endStopCode ?? "Ongoing / Unknown",
                                     time: trip.endTime
                                 )
@@ -283,7 +283,7 @@ struct TripDetailView: View {
                     .tint(accent)
             }
             if let endLat = trip.endLatitude, let endLon = trip.endLongitude {
-                Marker("Alighted", coordinate: CLLocationCoordinate2D(latitude: endLat, longitude: endLon))
+                Marker("Exited", coordinate: CLLocationCoordinate2D(latitude: endLat, longitude: endLon))
                     .tint(.gray)
             }
             if !trip.path.isEmpty {
