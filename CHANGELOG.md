@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - **SMS Resend Cooldown**: After requesting a code, "Resend Code" is disabled for 60 seconds with a live countdown to prevent SMS spam.
 - **Streak Tracking**: Stats screen now shows current commute streak and all-time best streak, calculated from consecutive days with completed trips.
 - **Map Stop Fallback**: Home map now shows markers for trips that have no GPS data by looking up stop coordinates from the local stops library. SMS-logged trips with known stop names/codes will now appear on the map.
+- **App Theme**: Added colour theme picker to Settings. Choose Blue, Indigo, Purple, Teal, Green, Red, or Auto (derives colour from your most-used transit agency). Accent colour propagates to badges, buttons, charts, and map markers across the whole app.
 - **Draggable Home Panel**: Bottom panel is now a proper draggable sheet with three snap heights (compact, default, expanded) and spring snap-back animation.
 - **Map Controls**: Added locate me and compass buttons to the map via native MapKit controls.
 - **Removed Shortcuts Section**: Removed the Recent Shortcuts panel from the home screen.

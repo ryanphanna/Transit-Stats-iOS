@@ -521,8 +521,19 @@ struct SettingsView: View {
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var locationManager = LocationManager.shared
     @Query private var profiles: [UserProfile]
-    
+    @Query(sort: \TripRecord.startTime, order: .reverse) private var allTrips: [TripRecord]
+    @AppStorage("appAccent") private var accentKey: String = "blue"
+
     private var profile: UserProfile? { profiles.first }
+
+    private var topAgency: String? {
+        let groups = Dictionary(grouping: allTrips.filter { !$0.agency.isEmpty }) { $0.agency }
+        return groups.max(by: { $0.value.count < $1.value.count })?.key
+    }
+
+    private var accent: Color {
+        AppTheme(rawValue: accentKey)?.resolved(topAgency: topAgency) ?? .blue
+    }
     
     var body: some View {
         NavigationStack {
@@ -557,14 +568,42 @@ struct SettingsView: View {
                         if profile?.isPremium == true {
                             Text("ACTIVE")
                                 .font(.system(size: 10, weight: .black))
-                                .foregroundColor(.blue)
+                                .foregroundColor(accent)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Color.blue.opacity(0.12))
+                                .background(accent.opacity(0.12))
                                 .cornerRadius(6)
                         }
                     }
                     .padding(.vertical, 2)
+                }
+
+                Section("Theme") {
+                    HStack(spacing: 12) {
+                        ForEach(AppTheme.allCases, id: \.rawValue) { theme in
+                            Button(action: { accentKey = theme.rawValue }) {
+                                VStack(spacing: 6) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(theme == .auto
+                                                  ? AppTheme.agencyColor(for: topAgency)
+                                                  : theme.swatchColor)
+                                            .frame(width: 32, height: 32)
+                                        if accentKey == theme.rawValue {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 12, weight: .black))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    Text(theme.label)
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(accentKey == theme.rawValue ? accent : .secondary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 6)
                 }
 
                 if profile?.isAdmin == true {

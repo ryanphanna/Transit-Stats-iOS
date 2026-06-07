@@ -27,6 +27,13 @@ struct HomeView: View {
     
     @StateObject private var api = TransitStatsAPI.shared
     @StateObject private var locationManager = LocationManager.shared
+    @AppStorage("appAccent") private var accentKey: String = "blue"
+
+    private var topAgency: String? {
+        let groups = Dictionary(grouping: completedTrips.filter { !$0.agency.isEmpty }) { $0.agency }
+        return groups.max(by: { $0.value.count < $1.value.count })?.key
+    }
+    private var accent: Color { AppTheme(rawValue: accentKey)?.resolved(topAgency: topAgency) ?? .blue }
     
     @State private var endStopText = ""
     @State private var showAlert = false
@@ -227,16 +234,16 @@ struct HomeView: View {
             HStack {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.blue)
+                        .fill(accent)
                         .frame(width: 6, height: 6)
                     Text("In Transit")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.blue)
+                        .foregroundColor(accent)
                         .kerning(0.5)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Color.blue.opacity(0.12))
+                .background(accent.opacity(0.12))
                 .cornerRadius(20)
                 
                 Spacer()
@@ -268,7 +275,7 @@ struct HomeView: View {
                                 .kerning(1)
                             Text(timeElapsed)
                                 .font(.system(size: 16, weight: .bold, design: .monospaced))
-                                .foregroundColor(.blue)
+                                .foregroundColor(accent)
                         }
                     }
                     
@@ -309,7 +316,7 @@ struct HomeView: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
-                                .background(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.06) : Color.blue)
+                                .background(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.06) : accent)
                                 .foregroundColor(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.3) : .white)
                                 .cornerRadius(12)
                         }
@@ -334,7 +341,7 @@ struct HomeView: View {
                                         VStack(alignment: .leading, spacing: 5) {
                                             Text(pred.route)
                                                 .font(.system(size: 18, weight: .black, design: .rounded))
-                                                .foregroundColor(.blue)
+                                                .foregroundColor(accent)
                                             if !pred.direction.isEmpty {
                                                 Text(pred.direction.uppercased())
                                                     .font(.system(size: 9, weight: .black))
@@ -348,7 +355,7 @@ struct HomeView: View {
                                         .cornerRadius(12)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 12)
-                                                .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                                                .stroke(accent.opacity(0.2), lineWidth: 1)
                                         )
                                     }
                                 }
@@ -378,7 +385,7 @@ struct HomeView: View {
                             .kerning(1)
                         Text(timeElapsed)
                             .font(.system(size: 16, weight: .bold, design: .monospaced))
-                            .foregroundColor(.blue)
+                            .foregroundColor(accent)
                     }
                 }
             }
@@ -400,14 +407,14 @@ struct HomeView: View {
                 
                 // Connection Graphic
                 HStack(spacing: 6) {
-                    Circle().fill(Color.blue).frame(width: 5, height: 5)
+                    Circle().fill(accent).frame(width: 5, height: 5)
                     Line()
                         .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [4]))
                         .frame(height: 1)
                         .foregroundColor(.white.opacity(0.15))
                     Image(systemName: "tram.fill")
                         .font(.system(size: 12))
-                        .foregroundColor(.blue)
+                        .foregroundColor(accent)
                     Line()
                         .stroke(style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [4]))
                         .frame(height: 1)
@@ -492,10 +499,10 @@ struct HomeView: View {
                             Spacer()
                         }
                         .padding(.vertical, 14)
-                        .background(trip.route.isEmpty ? Color.white.opacity(0.08) : Color.blue)
+                        .background(trip.route.isEmpty ? Color.white.opacity(0.08) : accent)
                         .foregroundColor(trip.route.isEmpty ? Color.white.opacity(0.3) : .white)
                         .cornerRadius(12)
-                        .shadow(color: trip.route.isEmpty ? .clear : Color.blue.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .shadow(color: trip.route.isEmpty ? .clear : accent.opacity(0.2), radius: 8, x: 0, y: 4)
                     }
                     .disabled(api.isSendingCommand || trip.route.isEmpty)
                     
@@ -557,10 +564,10 @@ struct HomeView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(LinearGradient(colors: [Color.blue, Color(hex: "0055ff")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .background(LinearGradient(colors: [accent, Color(hex: "0055ff")], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .foregroundColor(.white)
                 .cornerRadius(14)
-                .shadow(color: Color.blue.opacity(0.2), radius: 10, x: 0, y: 5)
+                .shadow(color: accent.opacity(0.2), radius: 10, x: 0, y: 5)
             }
         }
         .padding(24)
@@ -591,11 +598,11 @@ struct HomeView: View {
                 }
             }
             .padding(10)
-            .background(Color.blue.opacity(0.12))
+            .background(accent.opacity(0.12))
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                    .stroke(accent.opacity(0.2), lineWidth: 1)
             )
         }
         .transition(.opacity.combined(with: .scale))
@@ -624,10 +631,10 @@ struct HomeView: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text(shortcut.route)
                                         .font(.system(size: 10, weight: .black))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(accent)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 3)
-                                        .background(Color.blue.opacity(0.15))
+                                        .background(accent.opacity(0.15))
                                         .cornerRadius(4)
 
                                     Text(shortcut.stopName)
@@ -837,6 +844,8 @@ struct TripMarker: Identifiable {
 
 struct HubView: View {
     let marker: TripMarker
+    @AppStorage("appAccent") private var accentKey: String = "blue"
+    private var accent: Color { AppTheme(rawValue: accentKey)?.swatchColor ?? .blue }
     @State private var isAnimating = false
     
     var body: some View {
@@ -844,7 +853,7 @@ struct HubView: View {
             // Pulsing glow for active trips
             if marker.isActive {
                 Circle()
-                    .stroke(Color.blue.opacity(0.5), lineWidth: 4)
+                    .stroke(accent.opacity(0.5), lineWidth: 4)
                     .frame(width: 32, height: 32)
                     .scaleEffect(isAnimating ? 1.5 : 1.0)
                     .opacity(isAnimating ? 0 : 1)
@@ -856,7 +865,7 @@ struct HubView: View {
             }
             
             Circle()
-                .fill(marker.isActive ? Color.blue : Color.blue)
+                .fill(accent)
                 .frame(width: 28, height: 28)
                 .shadow(color: .black.opacity(0.3), radius: 3)
             

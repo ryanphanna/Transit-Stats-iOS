@@ -7,8 +7,15 @@ struct StatsView: View {
     @Query private var profiles: [UserProfile]
     @Query private var accuracies: [PredictionAccuracy]
     @State private var selectedYear: Int? = nil
+    @AppStorage("appAccent") private var accentKey: String = "blue"
 
     private var profile: UserProfile? { profiles.first }
+
+    private var topAgency: String? {
+        let groups = Dictionary(grouping: allTrips.filter { !$0.agency.isEmpty }) { $0.agency }
+        return groups.max(by: { $0.value.count < $1.value.count })?.key
+    }
+    private var accent: Color { AppTheme(rawValue: accentKey)?.resolved(topAgency: topAgency) ?? .blue }
 
     private var availableYears: [Int] {
         let calendar = Calendar.current
@@ -214,7 +221,7 @@ struct StatsView: View {
                                         x: .value("Day", stat.day),
                                         y: .value("Trips", stat.count)
                                     )
-                                    .foregroundStyle(Color.blue.opacity(0.8).gradient)
+                                    .foregroundStyle(accent.opacity(0.8).gradient)
                                     .cornerRadius(5)
                                 }
                             }
@@ -381,7 +388,7 @@ struct StatsView: View {
                 HStack {
                     Image(systemName: "tram.circle.fill")
                         .font(.system(size: 28))
-                        .foregroundColor(.blue)
+                        .foregroundColor(accent)
                     Text("TRANSIT STATS")
                         .font(.system(size: 13, weight: .black))
                         .foregroundColor(.white)
@@ -389,11 +396,11 @@ struct StatsView: View {
                     Spacer()
                     ZStack {
                         Circle()
-                            .fill(Color.blue.opacity(0.2))
+                            .fill(accent.opacity(0.2))
                             .frame(width: 40, height: 40)
                         Text(profile?.nickname?.prefix(1).uppercased() ?? "T")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(accent)
                     }
                 }
                 .padding(24)
@@ -416,7 +423,7 @@ struct StatsView: View {
                             .foregroundColor(.white.opacity(0.4))
                         Text(rank)
                             .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(.blue)
+                            .foregroundColor(accent)
                     }
                 }
                 .padding(24)
@@ -448,7 +455,7 @@ struct StatsView: View {
                             .fill(Color.white.opacity(0.07))
                             .frame(height: 6)
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.blue.opacity(0.8))
+                            .fill(accent.opacity(0.8))
                             .frame(width: geo.size.width * fraction, height: 6)
                     }
                 }
