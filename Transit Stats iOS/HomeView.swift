@@ -32,7 +32,6 @@ struct HomeView: View {
     @State private var alertMessage = ""
     @State private var isShowingAddTripSheet = false
     @State private var isShowingSettingsSheet = false
-    @State private var isShowingProfileSheet = false
     @State private var activeRouteText = ""
     
     // Map State
@@ -126,12 +125,6 @@ struct HomeView: View {
                 HStack {
                     Spacer()
                     HStack(spacing: 16) {
-                        Button(action: { isShowingProfileSheet = true }) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        Divider().frame(height: 20).background(Color.white.opacity(0.2))
                         Button(action: { isShowingSettingsSheet = true }) {
                             Image(systemName: "gearshape.fill")
                                 .font(.system(size: 18, weight: .bold))
@@ -212,10 +205,6 @@ struct HomeView: View {
         .sheet(isPresented: $isShowingSettingsSheet) {
             SettingsView()
         }
-        .sheet(isPresented: $isShowingProfileSheet) {
-            ProfileView()
-        }
-
         .alert("API Error", isPresented: Binding(
             get: { api.lastError != nil },
             set: { if !$0 { api.lastError = nil } }
