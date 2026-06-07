@@ -608,7 +608,7 @@ struct HomeView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(LinearGradient(colors: [accent, Color(hex: "0055ff")], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .background(LinearGradient(colors: [accent, .brandBlue], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .foregroundColor(.white)
                 .cornerRadius(14)
                 .shadow(color: accent.opacity(0.2), radius: 10, x: 0, y: 5)

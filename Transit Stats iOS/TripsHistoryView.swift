@@ -44,7 +44,7 @@ struct TripsHistoryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(hex: "020617").ignoresSafeArea()
+                Color.appBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     VStack(spacing: 10) {

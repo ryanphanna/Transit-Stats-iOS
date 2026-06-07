@@ -458,7 +458,7 @@ struct AddTripView: View {
                 .background(
                     stopText.isEmpty
                         ? AnyShapeStyle(Color.white.opacity(0.06))
-                        : AnyShapeStyle(LinearGradient(colors: [Color.blue, Color(hex: "0055ff")], startPoint: .leading, endPoint: .trailing))
+                        : AnyShapeStyle(LinearGradient(colors: [.blue, .brandBlue], startPoint: .leading, endPoint: .trailing))
                 )
                 .foregroundColor(stopText.isEmpty ? Color.white.opacity(0.25) : .white)
                 .cornerRadius(14)
@@ -713,7 +713,7 @@ struct AddTripView: View {
                 .background(
                     routeText.isEmpty
                         ? AnyShapeStyle(Color.white.opacity(0.06))
-                        : AnyShapeStyle(LinearGradient(colors: [Color.blue, Color(hex: "0055ff")], startPoint: .leading, endPoint: .trailing))
+                        : AnyShapeStyle(LinearGradient(colors: [.blue, .brandBlue], startPoint: .leading, endPoint: .trailing))
                 )
                 .foregroundColor(routeText.isEmpty ? Color.white.opacity(0.25) : .white)
                 .cornerRadius(14)

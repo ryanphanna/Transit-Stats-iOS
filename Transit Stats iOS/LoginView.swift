@@ -16,11 +16,14 @@ struct LoginView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [.appGradientStart, .appGradientEnd],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            Color.deepNavy.ignoresSafeArea()
+            
+            // Subtle top glow
+            VStack {
+                LinearGradient(colors: [Color.blue.opacity(0.15), .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 400)
+                Spacer()
+            }
             .ignoresSafeArea()
 
             if showingLogin {
@@ -106,7 +109,7 @@ struct LoginView: View {
                     }
                     .padding(.vertical, 16)
                     .background(
-                        LinearGradient(colors: [Color.blue, Color.indigo],
+                        LinearGradient(colors: [Color.blue, .brandBlue],
                                        startPoint: .leading,
                                        endPoint: .trailing)
                     )
@@ -219,7 +222,7 @@ struct LoginView: View {
                     }
                     .padding(.vertical, 16)
                     .background(
-                        LinearGradient(colors: [Color.blue, Color.indigo],
+                        LinearGradient(colors: [Color.blue, .brandBlue],
                                        startPoint: .leading,
                                        endPoint: .trailing)
                     )

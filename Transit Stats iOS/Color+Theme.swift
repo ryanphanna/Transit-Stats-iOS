@@ -4,6 +4,8 @@ extension Color {
     static let appBackground = Color(hex: "020617")
     static let appGradientStart = Color(hex: "0F172A")
     static let appGradientEnd = Color(hex: "0a0f1e")
+    static let brandBlue = Color(hex: "0055ff")
+    static let deepNavy = Color(hex: "0a0f1e")
 
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
