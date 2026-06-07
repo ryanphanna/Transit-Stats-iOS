@@ -76,6 +76,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func startPathTracking() {
         currentPath = []
         isTrackingPath = true
+        manager.distanceFilter = isHighFidelityEnabled ? kCLDistanceFilterNone : 10
         manager.startUpdatingLocation()
         if backgroundLocationEnabled {
             manager.allowsBackgroundLocationUpdates = true
@@ -84,6 +85,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     func stopPathTracking() -> Data? {
         isTrackingPath = false
+        manager.distanceFilter = 10
         manager.allowsBackgroundLocationUpdates = false
         manager.stopUpdatingLocation()
         

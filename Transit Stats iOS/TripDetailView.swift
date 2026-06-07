@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import FirebaseAuth
 import PhotosUI
+import MapKit
 
 struct TripDetailView: View {
     @EnvironmentObject private var appEnv: AppEnvironment
@@ -65,6 +66,15 @@ struct TripDetailView: View {
                             }
                         }
                         .padding(.top, 20)
+
+                        // Path Map
+                        if !trip.path.isEmpty || (trip.startLatitude != nil && trip.endLatitude != nil) {
+                            pathMap
+                                .frame(height: 180)
+                                .cornerRadius(24)
+                                .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.06), lineWidth: 1))
+                                .padding(.horizontal, 20)
+                        }
 
                         // Timeline Card
                         VStack(alignment: .leading, spacing: 12) {
@@ -264,5 +274,23 @@ struct TripDetailView: View {
                 .foregroundColor(.white)
         }
         .padding(16)
+    }
+
+    private var pathMap: some View {
+        Map {
+            if let startLat = trip.startLatitude, let startLon = trip.startLongitude {
+                Marker("Boarded", coordinate: CLLocationCoordinate2D(latitude: startLat, longitude: startLon))
+                    .tint(accent)
+            }
+            if let endLat = trip.endLatitude, let endLon = trip.endLongitude {
+                Marker("Alighted", coordinate: CLLocationCoordinate2D(latitude: endLat, longitude: endLon))
+                    .tint(.gray)
+            }
+            if !trip.path.isEmpty {
+                MapPolyline(coordinates: trip.path.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
+                    .stroke(accent, lineWidth: 3)
+            }
+        }
+        .mapStyle(.standard(emphasis: .muted))
     }
 }
