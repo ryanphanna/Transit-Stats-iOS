@@ -67,9 +67,20 @@ struct TripRow: View {
                         .font(.system(size: 12, weight: .semibold, design: .monospaced))
                         .foregroundColor(accent)
                 }
-                Image(systemName: trip.isSynced ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath")
-                    .font(.system(size: 11))
-                    .foregroundColor(trip.isSynced ? .white.opacity(0.2) : .white.opacity(0.4))
+                
+                if trip.isSynced {
+                    HStack(spacing: 3) {
+                        Text("VERIFIED")
+                            .font(.system(size: 8, weight: .black))
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(accent.opacity(0.8))
+                } else {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.4))
+                }
             }
         }
         .padding(14)
