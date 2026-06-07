@@ -155,17 +155,6 @@ struct StatsView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 4)
 
-                        // Year filter
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                yearPill(label: "ALL TIME", year: nil)
-                                ForEach(availableYears, id: \.self) { year in
-                                    yearPill(label: "\(year)", year: year)
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                        }
-
                         // Passport card
                         passportCard
                             .padding(.horizontal, 20)
@@ -256,6 +245,37 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("Stats")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(action: { withAnimation { selectedYear = nil } }) {
+                            HStack {
+                                Text("All Time")
+                                if selectedYear == nil { Image(systemName: "checkmark") }
+                            }
+                        }
+                        ForEach(availableYears, id: \.self) { year in
+                            Button(action: { withAnimation { selectedYear = year } }) {
+                                HStack {
+                                    Text("\(year)")
+                                    if selectedYear == year { Image(systemName: "checkmark") }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(selectedYear.map { "\($0)" } ?? "All Time")
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                        }
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(accent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(accent.opacity(0.12))
+                        .clipShape(Capsule())
+                    }
+                }
+            }
         }
         .onAppear { profileImage = ProfileImageManager.shared.load() }
         .onChange(of: pickerItem) { _, item in
@@ -270,20 +290,6 @@ struct StatsView: View {
     }
 
     // MARK: - Subviews
-
-    private func yearPill(label: String, year: Int?) -> some View {
-        let selected = selectedYear == year
-        return Button(action: { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { selectedYear = year } }) {
-            Text(label)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(selected ? .white : .white.opacity(0.45))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(selected ? Color.blue : Color.white.opacity(0.07))
-                .cornerRadius(20)
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(selected ? Color.clear : Color.white.opacity(0.1), lineWidth: 1))
-        }
-    }
 
     private var passportCard: some View {
         VStack(spacing: 0) {

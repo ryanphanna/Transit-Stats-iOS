@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Stats Year Picker Relocation**: Moved the year filter ("All Time", "2026", etc.) from the main scroll view to a clean `Menu` in the top-right of the navigation bar. This declutters the Stats page and provides a more native iOS filtering experience.
 - **Trip Detail View Redesign**: Overhauled the trip detail sheet with a premium, high-fidelity aesthetic. Includes a new hero section with a stylized route badge, a refined journey timeline with better iconography, a 3-column stats grid, and improved details cards.
 - **Centralized App Constants**: Moved app version, support email, and platform name to `AppEnvironment` for single-point management.
 - **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors (backgrounds, gradients) and eliminate hardcoded hex strings.
