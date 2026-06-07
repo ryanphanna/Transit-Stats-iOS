@@ -10,30 +10,24 @@ class VisionOCRManager {
             completion([])
             return
         }
-        
-        let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        let request = VNRecognizeTextRequest { request, error in
-            guard let observations = request.results as? [VNRecognizedTextObservation], error == nil else {
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            let request = VNRecognizeTextRequest { request, error in
+                guard let observations = request.results as? [VNRecognizedTextObservation], error == nil else {
+                    completion([])
+                    return
+                }
+                let recognizedStrings = observations.compactMap { $0.topCandidates(1).first?.string }
+                completion(recognizedStrings)
+            }
+            request.recognitionLevel = .accurate
+
+            do {
+                try requestHandler.perform([request])
+            } catch {
                 completion([])
-                return
             }
-            
-            let recognizedStrings = observations.compactMap { observation in
-                observation.topCandidates(1).first?.string
-            }
-            
-            // Heuristic: Filter for potential route numbers (1-4 digits, maybe a letter suffix)
-            // Or stop names (all caps, containing "ST", "AV", "RD", etc.)
-            completion(recognizedStrings)
-        }
-        
-        request.recognitionLevel = .accurate
-        
-        do {
-            try requestHandler.perform([request])
-        } catch {
-            print("Failed to perform OCR: \(error.localizedDescription)")
-            completion([])
         }
     }
     
