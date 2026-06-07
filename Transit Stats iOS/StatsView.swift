@@ -96,7 +96,7 @@ struct StatsView: View {
         if count < 50  { return "Regular" }
         if count < 200 { return "Pro Commuter" }
         if count < 500 { return "Transit Expert" }
-        return "System Master"
+        return "System Elite"
     }
 
     private var agencyStats: [(agency: String, count: Int)] {
