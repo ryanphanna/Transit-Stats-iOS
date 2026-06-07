@@ -40,6 +40,14 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         return "Poor (Inaccurate)"
     }
     
+    /// Returns true only if UIBackgroundModes includes "location" in the app's Info.plist.
+    /// Setting allowsBackgroundLocationUpdates = true without this registered causes an
+    /// EXC_BREAKPOINT assertion trap at runtime (not catchable with try/catch).
+    private var backgroundLocationEnabled: Bool {
+        let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String] ?? []
+        return modes.contains("location")
+    }
+
     override init() {
         self.authorizationStatus = manager.authorizationStatus
         self.isHighFidelityEnabled = UserDefaults.standard.bool(forKey: "isHighFidelityLocationEnabled")
@@ -47,7 +55,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = 10 // Only update every 10 meters to save battery
-        manager.allowsBackgroundLocationUpdates = true
+        manager.allowsBackgroundLocationUpdates = backgroundLocationEnabled
         manager.pausesLocationUpdatesAutomatically = true
     }
     
@@ -69,7 +77,9 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         currentPath = []
         isTrackingPath = true
         manager.startUpdatingLocation()
-        manager.allowsBackgroundLocationUpdates = true
+        if backgroundLocationEnabled {
+            manager.allowsBackgroundLocationUpdates = true
+        }
     }
     
     func stopPathTracking() -> Data? {

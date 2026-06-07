@@ -138,6 +138,12 @@ class TransitStatsAPI: ObservableObject {
         }
     }
     
+    /// Deletes a TripRecord from Firestore.
+    func deleteTrip(_ tripId: String) async throws {
+        let db = Firestore.firestore()
+        try await db.collection("trips").document(tripId).delete()
+    }
+
     /// Uploads a completed TripRecord directly to Firestore.
     func uploadTrip(_ trip: TripRecord) async throws {
         let db = Firestore.firestore()
