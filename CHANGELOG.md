@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors (backgrounds, gradients) and eliminate hardcoded hex strings.
 
 ### Fixed
+- **Home Panel Clipping**: Fixed an issue where the "COMPLETE JOURNEY" and "START NEW TRIP" buttons were partially obscured by the system tab bar. Increased the panel's bottom padding and adjusted snap heights to ensure all controls are fully visible and accessible.
 - **Settings Hierarchy**: Refactored the Account section to prioritize the user's name/nickname, with the masked Account ID moved to a secondary, smaller position. Relocated "Home Agency" to a new dedicated Preferences section to improve information hierarchy.
 - **Rank Terminology**: Updated the top-tier user rank from "System Master" to "System Elite" for more inclusive and professional terminology.
 - **Home Panel Layout**: Fixed an issue where the "Start New Trip" and "Complete Journey" buttons were partially cut off by the system tab bar. Increased bottom padding for the Home screen panel to ensure full visibility.

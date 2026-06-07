@@ -38,8 +38,8 @@ struct HomeView: View {
     @State private var activeRouteText = ""
 
     // Panel State
-    private let snapHeights: [CGFloat] = [120, 270, 540]
-    @State private var panelHeight: CGFloat = 270
+    private let snapHeights: [CGFloat] = [140, 300, 600]
+    @State private var panelHeight: CGFloat = 300
     @State private var dragOffset: CGFloat = 0
     private var effectivePanelHeight: CGFloat { max(snapHeights[0], panelHeight + dragOffset) }
 
@@ -230,7 +230,7 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
-                    .padding(.bottom, 84)
+                    .padding(.bottom, 110)
                 }
             }
             .frame(height: effectivePanelHeight)
