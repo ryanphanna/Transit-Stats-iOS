@@ -70,46 +70,45 @@ struct SettingsView: View {
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
-                        Spacer()
-                        if profile?.isPremium == true {
-                            Text("ACTIVE")
-                                .font(.system(size: 10, weight: .black))
-                                .foregroundColor(accent)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(accent.opacity(0.12))
-                                .cornerRadius(6)
-                        }
                     }
                     .padding(.vertical, 2)
                 }
 
-                Section("Theme") {
-                    HStack(spacing: 12) {
-                        ForEach(AppTheme.allCases, id: \.rawValue) { theme in
-                            Button(action: { appEnv.accentKey = theme.rawValue }) {
-                                VStack(spacing: 6) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(theme == .auto
-                                                  ? AppTheme.agencyColor(for: appEnv.homeAgency)
-                                                  : theme.swatchColor)
-                                            .frame(width: 32, height: 32)
-                                        if appEnv.accentKey == theme.rawValue {
-                                            Image(systemName: "checkmark")
-                                                .font(.system(size: 12, weight: .black))
-                                                .foregroundColor(.white)
+                Section {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(spacing: 12) {
+                            ForEach(AppTheme.allCases, id: \.rawValue) { theme in
+                                Button(action: { appEnv.accentKey = theme.rawValue }) {
+                                    VStack(spacing: 6) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(theme == .auto
+                                                      ? AppTheme.agencyColor(for: appEnv.homeAgency)
+                                                      : theme.swatchColor)
+                                                .frame(width: 32, height: 32)
+                                            if appEnv.accentKey == theme.rawValue {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 12, weight: .black))
+                                                    .foregroundColor(.white)
+                                            }
                                         }
+                                        Text(theme.label)
+                                            .font(.system(size: 9, weight: .medium))
+                                            .foregroundColor(appEnv.accentKey == theme.rawValue ? accent : .secondary)
                                     }
-                                    Text(theme.label)
-                                        .font(.system(size: 9, weight: .medium))
-                                        .foregroundColor(appEnv.accentKey == theme.rawValue ? accent : .secondary)
                                 }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
+                        
+                        Text("Auto mode matches your app accent to your most-ridden transit agency.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                            .lineSpacing(2)
                     }
                     .padding(.vertical, 6)
+                } header: {
+                    Text("Theme")
                 }
 
                 if profile?.isAdmin == true {

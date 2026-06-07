@@ -28,6 +28,7 @@ All notable changes to this project will be documented in this file.
 - **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors (backgrounds, gradients) and eliminate hardcoded hex strings.
 
 ### Fixed
+- **Settings UI Polishing**: Improved the clarity of the Theme section by adding an explanation for 'Auto' mode. Simplified the Plan section by removing the redundant 'Active' bubble, allowing the premium status to speak for itself.
 - **Background Synchronization**: Unified the background colors across all main views. The Home panel and "Add Trip" sheet now use the same solid `appBackground` (Deep Navy) as the Trips and Stats tabs, ensuring a perfectly consistent look throughout the app.
 - **Home Panel Clipping**: Fixed an issue where the "COMPLETE JOURNEY" and "START NEW TRIP" buttons were partially obscured by the system tab bar. Increased the panel's bottom padding and adjusted snap heights to ensure all controls are fully visible and accessible.
 - **Settings Hierarchy**: Refactored the Account section to prioritize the user's name/nickname, with the masked Account ID moved to a secondary, smaller position. Relocated "Home Agency" to a new dedicated Preferences section to improve information hierarchy.
