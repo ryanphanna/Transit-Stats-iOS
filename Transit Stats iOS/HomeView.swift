@@ -215,7 +215,7 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
-                    .padding(.bottom, 24)
+                    .padding(.bottom, 84)
                 }
             }
             .frame(height: effectivePanelHeight)
@@ -565,11 +565,11 @@ struct HomeView: View {
             HStack {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.white.opacity(0.2))
+                        .fill(Color.green.opacity(0.8))
                         .frame(width: 6, height: 6)
-                    Text("Standby")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.white.opacity(0.4))
+                    Text("Ready")
+                        .font(.system(size: 10, weight: .black, design: .rounded))
+                        .foregroundColor(.white.opacity(0.6))
                         .kerning(0.5)
                 }
                 .padding(.horizontal, 10)

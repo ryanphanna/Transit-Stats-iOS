@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - **Centralized App Constants**: Moved app version, support email, and platform name to `AppEnvironment` for single-point management.
 - **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors (backgrounds, gradients) and eliminate hardcoded hex strings.
 
+### Fixed
+- **Home Panel Layout**: Fixed an issue where the "Start New Trip" and "Complete Journey" buttons were partially cut off by the system tab bar. Increased bottom padding for the Home screen panel to ensure full visibility.
+- **UI Clarification**: Replaced the confusing "Standby" badge on the Home screen with a clearer "Ready" indicator and an active green status dot.
+
 ### Refactored
 - **Modular View Architecture**: Split the monolithic `ContentView.swift` (1000+ lines) into focused, maintainable files: `LoginView`, `MainTabView`, `TripsHistoryView`, `TripRow`, `TripDetailView`, and `SettingsView`.
 - **Dynamic Versioning**: UI now automatically pulls the marketing version from the app Bundle.
