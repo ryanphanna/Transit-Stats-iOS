@@ -5,36 +5,27 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **Premium Stats Card Redesign**: Overhauled the Transit Pass card on the Stats page with a high-end, tactile design. Features a subtle holographic shimmer, improved typography for the user's nickname and rank, and a refined branding treatment.
-- **Enhanced Trip History Rows**: Updated trip rows to show both the logging source (App vs SMS) and a clear 'Verified' status icon simultaneously, providing better data provenance at a glance.
-- **Trip Verification Badges**: Added a prominent "VERIFIED" seal to successfully synced trips in the history tab.
-- **Trips Panel Architecture**: Refactored the Trips History view to use a draggable bottom panel over a map background, matching the Home screen's aesthetic. The search bar is now integrated into the panel's header for instant access, creating a more immersive and cohesive navigation experience.
+- **Passport Tab UI**: Completely refactored the Stats tab into a premium 'Passport' experience, inspired by Flighty. Features an interactive map background with translucent journey paths, a draggable data panel, and a high-fidelity 'Transit Pass' hero card with holographic shimmer.
+- **Enhanced Trip History Rows**: Updated trip rows to show both the logging source (App vs SMS) and a clear 'Verified' status seal simultaneously, providing better data provenance at a glance.
+- **Integrated Year Picker**: Relocated the stats year filter into the panel as horizontal capsules for a faster, more native interaction model.
+- **Trip Deletion**: Added support for deleting trips directly from the history tab. Users can now use a 'swipe-to-delete' gesture or a long-press context menu to remove incorrect entries.
+- **Map Heatmap Visualization**: Replaced numbered map markers with a clean heatmap system. Hubs now use color opacity and subtle scaling to indicate trip frequency. Removed text labels for a minimalist, immersive map experience.
 - **Trip Path Visualization**: Integrated a mini-map into the Trip Detail view that visualizes your journey. If high-fidelity tracking was enabled, it displays the full 'breadcrumb' path as a polyline; otherwise, it shows markers for your boarding and exiting points.
-- **High-Fidelity Tracking Optimization**: Refactored the `LocationManager` to use `kCLDistanceFilterNone` when breadcrumb tracking is active, ensuring the most precise coordinate capture possible.
-- **Map Heatmap Visualization**: Replaced numbered map markers with a clean heatmap system. Hubs now use color opacity and subtle scaling to indicate trip frequency, creating a more intuitive spatial data visualization. Removed text labels from markers for a minimalist, immersive map experience.
 - **Enhanced 'Locate Me' Zoom**: Increased the zoom level of the 'Locate' button to a street-level focus (~200m radius), making it easier to see exactly where you are relative to nearby stops.
-- **Trip Deletion**: Added support for deleting trips directly from the history tab. Users can now use a 'swipe-to-delete' gesture or a long-press context menu to remove incorrect or unwanted trip entries.
+- **One-Tap 'Locate' in Logger**: Added a dedicated Locate button to the boarding logger (`AddTripView`). Tapping it instantly scans for nearby transit stops and surfaces them as one-tap chips.
 - **Final Design Polish & Branding**: Standardized the entire app's color palette (Deep Navy, Brand Blue) and updated the `LoginView` to match the premium dark theme.
-- **Empty State Views**: Implemented a "No Trips Yet" view in the history tab to provide a better experience for new users.
-- **Responsive Home Panel**: Refactored the bottom panel on the Home screen to use a dedicated drag zone at the top. This eliminates gesture conflicts with the internal scroll view, making it much easier to swipe the panel up and down.
-- **Medium-Detent Sheets**: Updated the "Add Trip" and "Settings" screens to open as non-full-screen sheets (medium detent) by default. This allows for a much faster "quick log" experience without losing context of the map.
-- **Elegant Map Markers**: Redesigned map markers to be more refined and integrated with the map. Active trips now feature a glowing, pulsing icon, while transit hubs are represented by high-contrast 'dots' with translucent borders. This replaces the basic numbered circles with a more professional, Apple Maps-inspired aesthetic.
-- **Standardized Panel Backgrounds**: Synchronized the background styling of the Home screen 'Ready' panel and the 'Add Trip' sheet. Both now use a consistent `ultraThinMaterial` for a cohesive, premium translucent look across the app.
-- **One-Tap 'Locate' in Logger**: Added a dedicated Locate button to the boarding logger (`AddTripView`). Tapping it instantly scans for nearby transit stops and surfaces them as one-tap chips, eliminating the need to type your current location.
-- **Dynamic Agency Stats**: The Agencies section on the Stats page now respects the year filter and is limited to your Top 5 most-used agencies, providing a cleaner and more relevant breakdown of your transit habits.
-- **Stats Year Picker Relocation**: Moved the year filter ("All Time", "2026", etc.) from the main scroll view to a clean `Menu` in the top-right of the navigation bar. This declutters the Stats page and provides a more native iOS filtering experience.
-- **Trip Detail View Redesign**: Overhauled the trip detail sheet with a premium, high-fidelity aesthetic. Includes a new hero section with a stylized route badge, a refined journey timeline with better iconography, a 3-column stats grid, and improved details cards.
+- **Responsive Home Panel**: Refactored the bottom panel on the Home screen to use a dedicated drag zone at the top. This eliminates gesture conflicts with the internal scroll view, making swiping much smoother.
+- **Medium-Detent Sheets**: Updated the "Add Trip" and "Settings" screens to open as non-full-screen sheets (medium detent) by default.
+- **Dynamic Agency Stats**: The Agencies section on the Stats page now respects the year filter and is limited to your Top 5 most-used agencies.
 - **Centralized App Constants**: Moved app version, support email, and platform name to `AppEnvironment` for single-point management.
-- **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors (backgrounds, gradients) and eliminate hardcoded hex strings.
+- **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors and eliminate hardcoded hex strings.
 
 ### Fixed
-- **Settings UI Polishing**: Improved the clarity of the Theme section by adding an explanation for 'Auto' mode. Simplified the Plan section by removing the redundant 'Active' bubble, allowing the premium status to speak for itself.
-- **Background Synchronization**: Unified the background colors across all main views. The Home panel and "Add Trip" sheet now use the same solid `appBackground` (Deep Navy) as the Trips and Stats tabs, ensuring a perfectly consistent look throughout the app.
-- **Home Panel Clipping**: Fixed an issue where the "COMPLETE JOURNEY" and "START NEW TRIP" buttons were partially obscured by the system tab bar. Increased the panel's bottom padding and adjusted snap heights to ensure all controls are fully visible and accessible.
-- **Settings Hierarchy**: Refactored the Account section to prioritize the user's name/nickname, with the masked Account ID moved to a secondary, smaller position. Relocated "Home Agency" to a new dedicated Preferences section to improve information hierarchy.
-- **Rank Terminology**: Updated the top-tier user rank from "System Master" to "System Elite" for more inclusive and professional terminology.
-- **Home Panel Layout**: Fixed an issue where the "Start New Trip" and "Complete Journey" buttons were partially cut off by the system tab bar. Increased bottom padding for the Home screen panel to ensure full visibility.
-- **UI Clarification**: Replaced the confusing "Standby" badge on the Home screen with a clearer "Ready" indicator and an active green status dot.
+- **Terminology Update**: Replaced all instances of "Alighted" with "Exited" throughout the app for better localization in the Canadian transit context.
+- **Settings UI Polishing**: Improved the clarity of the Theme section by adding an explanation for 'Auto' mode. Simplified the Plan section by removing redundant status badges.
+- **Background Synchronization**: Unified the background colors across all main views. The Home panel and "Add Trip" sheet now use the same solid `appBackground` (Deep Navy) as the rest of the app.
+- **Home Panel Clipping**: Fixed an issue where the "COMPLETE JOURNEY" and "START NEW TRIP" buttons were partially obscured by the system tab bar. Increased the panel's bottom padding and adjusted snap heights.
+- **Rank Terminology**: Updated the top-tier user rank from "System Master" to "System Elite" for more professional terminology.
 
 ### Refactored
 - **Modular View Architecture**: Split the monolithic `ContentView.swift` (1000+ lines) into focused, maintainable files: `LoginView`, `MainTabView`, `TripsHistoryView`, `TripRow`, `TripDetailView`, and `SettingsView`.
