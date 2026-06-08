@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - **StatsView: Streak calculation**: Streak now counts days with any logged trip (was incorrectly filtering to completed trips only, causing the streak to show 0 for users with many trips that don't have an end time).
-- **StatsView: Rank label**: Renamed top-tier rank from "System Elite" to "Transit Legend".
+- **StatsView: Rank system removed**: Removed the rank badge and rank computed property entirely from the passport card. The identity row now shows only the rider's nickname and join date.
 - **StatsView: Redundant Identification card**: Removed the separate "Identification" card. Rider nickname, rank badge, and join date are now merged directly into the Passport card.
 - **StatsView: "All Transit Stats" button**: Removed the redundant button — scrolling achieves the same result.
 - **AddTripView: Theming**: AddTripView now uses the app-wide accent colour (via `AppEnvironment`) instead of hardcoded blue, keeping it consistent across all colour themes. Background changed from `Color.clear` to `Color.appBackground` so the sheet matches the rest of the app.

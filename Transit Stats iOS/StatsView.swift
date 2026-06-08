@@ -86,15 +86,6 @@ struct StatsView: View {
         return longest
     }
 
-    private var rank: String {
-        let count = allTrips.count
-        if count < 10  { return "New Rider" }
-        if count < 50  { return "Regular" }
-        if count < 200 { return "Pro Commuter" }
-        if count < 500 { return "Transit Expert" }
-        return "Transit Legend"
-    }
-
     private var agencyStats: [(agency: String, count: Int)] {
         let groups = Dictionary(grouping: trips.filter { !$0.agency.isEmpty }) { $0.agency }
         return groups.map { (agency: $0.key, count: $0.value.count) }
@@ -421,18 +412,9 @@ struct StatsView: View {
                     Text(profile?.nickname ?? "TRANSIT RIDER")
                         .font(.system(size: 16, weight: .black, design: .rounded))
                         .foregroundColor(.white)
-                    HStack(spacing: 6) {
-                        Text(rank.uppercased())
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundColor(accent)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(accent.opacity(0.12))
-                            .cornerRadius(5)
-                        Text("SINCE \(joinDate)")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.3))
-                    }
+                    Text("SINCE \(joinDate)")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.3))
                 }
                 Spacer()
                 if let img = profileImage {
