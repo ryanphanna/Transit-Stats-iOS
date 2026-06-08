@@ -38,13 +38,14 @@ struct HomeView: View {
     @State private var activeRouteText = ""
 
     // Panel State
-    private let snapHeights: [CGFloat] = [140, 300, 600]
-    @State private var panelHeight: CGFloat = 300
+    private let snapHeights: [CGFloat] = [140, 380, 620]
+    @State private var panelHeight: CGFloat = 380
     @State private var dragOffset: CGFloat = 0
     private var effectivePanelHeight: CGFloat { max(snapHeights[0], panelHeight + dragOffset) }
 
     // Map State
     @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var pendingLocationZoom = false
     
     private var mapMarkers: [TripMarker] {
         var hubs: [String: (lat: Double, lon: Double, count: Int, route: String)] = [:]
@@ -127,9 +128,6 @@ struct HomeView: View {
             .mapStyle(.standard)
             .mapControls { }
             .onAppear { updateCameraPosition() }
-            .onChange(of: mapMarkers.count) {
-                withAnimation(.spring()) { updateCameraPosition() }
-            }
             .ignoresSafeArea()
 
             // Settings button — top right
@@ -148,7 +146,7 @@ struct HomeView: View {
                     }
                     .padding(.trailing, 16)
                 }
-                .padding(.top, 8)
+                .padding(.top, 16)
                 Spacer()
             }
 
@@ -164,15 +162,16 @@ struct HomeView: View {
 
                         // Locate me
                         Button(action: {
-                            withAnimation(.spring()) {
-                                if let coord = locationManager.lastLocation?.coordinate {
+                            locationManager.startUpdating()
+                            if let coord = locationManager.lastLocation?.coordinate {
+                                withAnimation(.spring()) {
                                     cameraPosition = .region(MKCoordinateRegion(
                                         center: coord,
-                                        span: MKCoordinateSpan(latitudeDelta: 0.002, longitudeDelta: 0.002)
+                                        span: MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
                                     ))
-                                } else {
-                                    cameraPosition = .userLocation(followsHeading: false, fallback: .automatic)
                                 }
+                            } else {
+                                pendingLocationZoom = true
                             }
                         }) {
                             Image(systemName: "location.fill")
@@ -189,31 +188,31 @@ struct HomeView: View {
                 }
                 .padding(.bottom, effectivePanelHeight + 16)
             }
-        // Bottom panel — ZStack overlay so the tab bar stays visible
+        // Bottom panel — ZStack overlay so tab bar stays visible
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 0) {
-                // Dedicated Drag Zone
-                VStack(spacing: 0) {
-                    Capsule()
-                        .fill(Color.white.opacity(0.25))
-                        .frame(width: 36, height: 4)
-                        .padding(.top, 10)
-                        .padding(.bottom, 10)
-                }
-                .frame(maxWidth: .infinity)
-                .background(Color.white.opacity(0.001)) // Make it tappable
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in dragOffset = -value.translation.height }
-                        .onEnded { _ in
-                            let nearest = snapHeights.min(by: { abs($0 - (panelHeight + dragOffset)) < abs($1 - (panelHeight + dragOffset)) }) ?? 270
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                panelHeight = nearest
-                                dragOffset = 0
+                // Drag handle — large hit target so the whole top of the panel is draggable
+                Color.clear
+                    .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
+                    .overlay(
+                        Capsule()
+                            .fill(Color.white.opacity(0.25))
+                            .frame(width: 36, height: 4),
+                        alignment: .center
+                    )
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in dragOffset = -value.translation.height }
+                            .onEnded { _ in
+                                let nearest = snapHeights.min(by: { abs($0 - (panelHeight + dragOffset)) < abs($1 - (panelHeight + dragOffset)) }) ?? 270
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                    panelHeight = nearest
+                                    dragOffset = 0
+                                }
                             }
-                        }
-                )
+                    )
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
@@ -230,7 +229,7 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
-                    .padding(.bottom, 110)
+                    .padding(.bottom, 40)
                 }
             }
             .frame(height: effectivePanelHeight)
@@ -252,10 +251,19 @@ struct HomeView: View {
         .onDisappear {
             locationManager.stopUpdating()
         }
+        .onChange(of: locationManager.lastLocation) { _, location in
+            guard pendingLocationZoom, let coord = location?.coordinate else { return }
+            pendingLocationZoom = false
+            withAnimation(.spring()) {
+                cameraPosition = .region(MKCoordinateRegion(
+                    center: coord,
+                    span: MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
+                ))
+            }
+        }
         .sheet(isPresented: $isShowingAddTripSheet) {
             AddTripView()
                 .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingSettingsSheet) {
             SettingsView()
@@ -279,16 +287,16 @@ struct HomeView: View {
             HStack {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(accent)
+                        .fill(Color(red: 0.2, green: 0.85, blue: 0.55))
                         .frame(width: 6, height: 6)
                     Text("In Transit")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(accent)
+                        .foregroundColor(Color(red: 0.2, green: 0.85, blue: 0.55))
                         .kerning(0.5)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(accent.opacity(0.12))
+                .background(Color(red: 0.2, green: 0.85, blue: 0.55).opacity(0.12))
                 .cornerRadius(20)
                 
                 Spacer()
@@ -569,30 +577,12 @@ struct HomeView: View {
     }
 
     private var readyStateCard: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green.opacity(0.8))
-                        .frame(width: 6, height: 6)
-                    Text("Ready")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
-                        .kerning(0.5)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.white.opacity(0.06))
-                .cornerRadius(20)
-                
-                Spacer()
-            }
-            
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Ready to go?")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                
+
                 Text("Log your next commute or transit journey to keep your stats up to date.")
                     .font(.system(size: 13))
                     .foregroundColor(.white.opacity(0.4))
@@ -845,32 +835,31 @@ struct HomeView: View {
     }
     
     private func updateCameraPosition() {
-        guard !mapMarkers.isEmpty else { return }
-        let coordinates = mapMarkers.map { $0.coordinate }
-        
-        var minLat = 90.0
-        var maxLat = -90.0
-        var minLon = 180.0
-        var maxLon = -180.0
-        
-        for coord in coordinates {
-            minLat = min(minLat, coord.latitude)
-            maxLat = max(maxLat, coord.latitude)
-            minLon = min(minLon, coord.longitude)
-            maxLon = max(maxLon, coord.longitude)
+        // Prefer user's current location at street level
+        if let coord = locationManager.lastLocation?.coordinate {
+            cameraPosition = .region(MKCoordinateRegion(
+                center: coord,
+                span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)
+            ))
+            return
         }
-        
-        let center = CLLocationCoordinate2D(
-            latitude: (minLat + maxLat) / 2,
-            longitude: (minLon + maxLon) / 2
-        )
-        
+        // Fall back: fit only the most recent 10 markers (not all history)
+        let recent = Array(mapMarkers.sorted { $0.count > $1.count }.prefix(10))
+        guard !recent.isEmpty else { return }
+        let coordinates = recent.map { $0.coordinate }
+        var minLat = 90.0, maxLat = -90.0, minLon = 180.0, maxLon = -180.0
+        for coord in coordinates {
+            minLat = min(minLat, coord.latitude); maxLat = max(maxLat, coord.latitude)
+            minLon = min(minLon, coord.longitude); maxLon = max(maxLon, coord.longitude)
+        }
         let span = MKCoordinateSpan(
-            latitudeDelta: (maxLat - minLat) * 1.5 + 0.01,
-            longitudeDelta: (maxLon - minLon) * 1.5 + 0.01
+            latitudeDelta: max((maxLat - minLat) * 1.5, 0.05),
+            longitudeDelta: max((maxLon - minLon) * 1.5, 0.05)
         )
-        
-        cameraPosition = .region(MKCoordinateRegion(center: center, span: span))
+        cameraPosition = .region(MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
+            span: span
+        ))
     }
 }
 

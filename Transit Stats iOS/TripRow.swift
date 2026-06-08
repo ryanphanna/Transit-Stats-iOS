@@ -18,14 +18,22 @@ struct TripRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Text(trip.route.isEmpty ? "?" : trip.route)
-                .font(.system(size: trip.route.count > 4 ? 11 : 13, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-                .frame(width: 48, height: 48)
-                .background(trip.route.isEmpty ? Color.white.opacity(0.08) : accent.opacity(0.85))
-                .cornerRadius(12)
+            Group {
+                if trip.route.isEmpty {
+                    Image(systemName: "tram.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.3))
+                } else {
+                    Text(trip.route)
+                        .font(.system(size: trip.route.count > 4 ? 11 : 13, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                }
+            }
+            .frame(width: 48, height: 48)
+            .background(trip.route.isEmpty ? Color.white.opacity(0.05) : accent.opacity(0.85))
+            .cornerRadius(12)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {

@@ -8,7 +8,9 @@ struct AddTripView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var locationManager = LocationManager.shared
-    
+    @EnvironmentObject private var appEnv: AppEnvironment
+    private var accent: Color { appEnv.accent }
+
     @Query(sort: \TripRecord.startTime, order: .reverse) private var tripHistory: [TripRecord]
     @Query private var stops: [Stop]
     @Query private var profiles: [UserProfile]
@@ -118,7 +120,7 @@ struct AddTripView: View {
 
     var body: some View {
         ZStack {
-            Color.clear.ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Drag handle
@@ -132,7 +134,7 @@ struct AddTripView: View {
                 HStack(spacing: 8) {
                     stepDot(label: "WAITING", active: step == .atStop, done: step == .onBoard)
                     Rectangle()
-                        .fill(step == .onBoard ? Color.blue : Color.white.opacity(0.12))
+                        .fill(step == .onBoard ? accent : Color.white.opacity(0.12))
                         .frame(height: 1)
                         .animation(.easeInOut(duration: 0.4), value: step)
                     stepDot(label: "BOARDED", active: step == .onBoard, done: false)
@@ -244,7 +246,7 @@ struct AddTripView: View {
                 Text("Where are you waiting?")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                Text("Enter the stop name or number. We'll log the timestamp now.")
+                Text("Optional — enter the stop you're at or leave blank.")
                     .font(.system(size: 13))
                     .foregroundColor(Color.white.opacity(0.45))
                     .lineSpacing(2)
@@ -272,7 +274,7 @@ struct AddTripView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(
-                                            stopText.isEmpty ? Color.white.opacity(0.1) : Color.blue.opacity(0.4),
+                                            stopText.isEmpty ? Color.white.opacity(0.1) : accent.opacity(0.4),
                                             lineWidth: 1
                                         )
                                 )
@@ -284,16 +286,16 @@ struct AddTripView: View {
                                 Button(action: locateUser) {
                                     ZStack {
                                         if isLocating {
-                                            ProgressView().tint(.blue)
+                                            ProgressView().tint(accent)
                                                 .scaleEffect(0.8)
                                         } else {
                                             Image(systemName: "location.fill")
                                                 .font(.system(size: 14))
-                                                .foregroundColor(.blue)
+                                                .foregroundColor(accent)
                                         }
                                     }
                                     .frame(width: 32, height: 32)
-                                    .background(Color.blue.opacity(0.15))
+                                    .background(accent.opacity(0.15))
                                     .clipShape(Circle())
                                 }
                                 .padding(.trailing, 8)
@@ -309,11 +311,11 @@ struct AddTripView: View {
                         Button(action: { showingImagePicker = true }) {
                             ZStack {
                                 if isProcessingOCR {
-                                    ProgressView().tint(.blue)
+                                    ProgressView().tint(accent)
                                 } else {
                                     Image(systemName: "camera.viewfinder")
                                         .font(.system(size: 20))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(accent)
                                 }
                             }
                             .frame(width: 50, height: 50)
@@ -431,54 +433,25 @@ struct AddTripView: View {
                     }
                 }
 
-                // Current time display
-                HStack(spacing: 6) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.white.opacity(0.3))
-                    Text("Arrival logged at \(Date().formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.white.opacity(0.3))
-                }
-                .padding(.horizontal, 28)
-                .padding(.top, 2)
             }
 
             // Primary CTA
             Button(action: startTripAtStop) {
                 HStack {
                     Spacer()
-                    Text("I'm at the stop")
+                    Text("Continue")
                         .font(.system(size: 15, weight: .semibold))
                     Image(systemName: "arrow.right")
                         .font(.system(size: 14, weight: .semibold))
                     Spacer()
                 }
                 .padding(.vertical, 16)
-                .background(
-                    stopText.isEmpty
-                        ? AnyShapeStyle(Color.white.opacity(0.06))
-                        : AnyShapeStyle(LinearGradient(colors: [.blue, .brandBlue], startPoint: .leading, endPoint: .trailing))
-                )
-                .foregroundColor(stopText.isEmpty ? Color.white.opacity(0.25) : .white)
+                .background(LinearGradient(colors: [accent, .brandBlue], startPoint: .leading, endPoint: .trailing))
+                .foregroundColor(.white)
                 .cornerRadius(14)
-                .shadow(color: stopText.isEmpty ? .clear : Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
             }
-            .disabled(stopText.trimmingCharacters(in: .whitespaces).isEmpty)
             .padding(.horizontal, 20)
-            .animation(.easeInOut(duration: 0.2), value: stopText.isEmpty)
-
-            // Skip stop — just go straight to boarding
-            Button(action: {
-                withAnimation { step = .onBoard }
-                waitingSince = Date()
-            }) {
-                Text("Skip — I'm already on board")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color.white.opacity(0.3))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top, 4)
         }
     }
 
@@ -487,11 +460,11 @@ struct AddTripView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(Color.blue)
+                        .fill(accent)
                         .frame(width: 7, height: 7)
                     Text("YOU'RE ON BOARD!")
                         .font(.system(size: 11, weight: .black))
-                        .foregroundColor(.blue)
+                        .foregroundColor(accent)
                         .kerning(1.5)
                 }
 
@@ -533,7 +506,7 @@ struct AddTripView: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
                                     .stroke(
-                                        routeText.isEmpty ? Color.white.opacity(0.1) : Color.blue.opacity(0.5),
+                                        routeText.isEmpty ? Color.white.opacity(0.1) : accent.opacity(0.5),
                                         lineWidth: 1
                                     )
                             )
@@ -544,11 +517,11 @@ struct AddTripView: View {
                         Button(action: { showingImagePicker = true }) {
                             ZStack {
                                 if isProcessingOCR {
-                                    ProgressView().tint(.blue)
+                                    ProgressView().tint(accent)
                                 } else {
                                     Image(systemName: "camera.viewfinder")
                                         .font(.system(size: 20))
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(accent)
                                 }
                             }
                             .frame(width: 50, height: 50)
@@ -563,7 +536,7 @@ struct AddTripView: View {
                     }
                     .padding(.horizontal, 20)
                 }
-                
+
                 // Route suggestions based on history
                 if !suggestions.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
@@ -597,7 +570,7 @@ struct AddTripView: View {
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 10)
-                                        .background(routeText == pred.route ? Color.blue : Color.white.opacity(0.08))
+                                        .background(routeText == pred.route ? accent : Color.white.opacity(0.08))
                                         .cornerRadius(12)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 12)
@@ -633,7 +606,7 @@ struct AddTripView: View {
                                                 .foregroundColor(.white)
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 8)
-                                                .background(direction == pred.direction ? Color.blue : Color.white.opacity(0.1))
+                                                .background(direction == pred.direction ? accent : Color.white.opacity(0.1))
                                                 .cornerRadius(8)
                                         }
                                     }
@@ -676,7 +649,7 @@ struct AddTripView: View {
                                                 .font(.system(size: 11, weight: .semibold))
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 7)
-                                                .background(agency == ag ? Color.blue : Color.white.opacity(0.07))
+                                                .background(agency == ag ? accent : Color.white.opacity(0.07))
                                                 .foregroundColor(agency == ag ? .white : Color.white.opacity(0.5))
                                                 .cornerRadius(20)
                                                 .overlay(
@@ -713,7 +686,7 @@ struct AddTripView: View {
                 .background(
                     routeText.isEmpty
                         ? AnyShapeStyle(Color.white.opacity(0.06))
-                        : AnyShapeStyle(LinearGradient(colors: [.blue, .brandBlue], startPoint: .leading, endPoint: .trailing))
+                        : AnyShapeStyle(LinearGradient(colors: [accent, .brandBlue], startPoint: .leading, endPoint: .trailing))
                 )
                 .foregroundColor(routeText.isEmpty ? Color.white.opacity(0.25) : .white)
                 .cornerRadius(14)
@@ -737,9 +710,6 @@ struct AddTripView: View {
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
         }
-        .presentationBackground(Color.appBackground)
-        .presentationBackgroundInteraction(.enabled(upThrough: .medium))
-        .presentationCornerRadius(28)
     }
 
     // MARK: - Step Indicator
@@ -748,7 +718,7 @@ struct AddTripView: View {
         VStack(spacing: 5) {
             ZStack {
                 Circle()
-                    .fill(done || active ? Color.blue : Color.white.opacity(0.1))
+                    .fill(done || active ? accent : Color.white.opacity(0.1))
                     .frame(width: 10, height: 10)
                 if done {
                     Image(systemName: "checkmark")

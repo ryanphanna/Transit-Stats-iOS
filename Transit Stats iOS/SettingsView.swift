@@ -11,9 +11,13 @@ struct SettingsView: View {
     @Query private var profiles: [UserProfile]
     @State private var profileImage: UIImage? = nil
     @State private var pickerItem: PhotosPickerItem? = nil
+    @State private var displayName: String = UserDefaults.standard.string(forKey: "displayName") ?? ""
+    @State private var isEditingName = false
+    @FocusState private var isNameFocused: Bool
 
     private var profile: UserProfile? { profiles.first }
     private var accent: Color { appEnv.accent }
+    private var resolvedName: String { displayName.isEmpty ? "Transit Rider" : displayName }
 
     var body: some View {
         NavigationStack {
@@ -40,25 +44,36 @@ struct SettingsView: View {
                             .overlay(Circle().stroke(accent.opacity(0.25), lineWidth: 1))
                         }
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(profile?.nickname ?? authManager.currentUser?.email?.components(separatedBy: "@").first ?? "User")
-                                .fontWeight(.semibold)
+                            if isEditingName {
+                                TextField("Your name", text: $displayName)
+                                    .fontWeight(.semibold)
+                                    .focused($isNameFocused)
+                                    .onSubmit {
+                                        UserDefaults.standard.set(displayName, forKey: "displayName")
+                                        isEditingName = false
+                                    }
+                            } else {
+                                Text(resolvedName)
+                                    .fontWeight(.semibold)
+                            }
                             Text("Account ID: \(authManager.currentUser?.uid.prefix(4) ?? "")••••\(authManager.currentUser?.uid.suffix(4) ?? "")")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
+                        Spacer()
+                        Button(isEditingName ? "Save" : "Edit") {
+                            if isEditingName {
+                                UserDefaults.standard.set(displayName, forKey: "displayName")
+                                isEditingName = false
+                            } else {
+                                isEditingName = true
+                                isNameFocused = true
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(accent)
                     }
                     .padding(.vertical, 4)
-                }
-
-                if let agency = appEnv.homeAgency {
-                    Section("Preferences") {
-                        HStack {
-                            Text("Home Agency")
-                            Spacer()
-                            Text(agency)
-                                .foregroundColor(.gray)
-                        }
-                    }
                 }
 
                 Section("Plan") {
@@ -105,6 +120,17 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
                             .lineSpacing(2)
+
+                        if let agency = appEnv.homeAgency {
+                            HStack {
+                                Text("Home Agency")
+                                    .font(.system(size: 13))
+                                Spacer()
+                                Text(agency)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.gray)
+                            }
+                        }
                     }
                     .padding(.vertical, 6)
                 } header: {
@@ -183,6 +209,3 @@ struct SettingsView: View {
     }
 }
 
-// Color Hex conversion helper
-extension Color {
-    init(hex: String) {

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import FirebaseAuth
 
 struct ContentView: View {
     @StateObject private var authManager = AuthManager.shared

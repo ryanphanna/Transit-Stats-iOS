@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **StatsView: Streak calculation**: Streak now counts days with any logged trip (was incorrectly filtering to completed trips only, causing the streak to show 0 for users with many trips that don't have an end time).
+- **StatsView: Rank label**: Renamed top-tier rank from "System Elite" to "Transit Legend".
+- **StatsView: Redundant Identification card**: Removed the separate "Identification" card. Rider nickname, rank badge, and join date are now merged directly into the Passport card.
+- **StatsView: "All Transit Stats" button**: Removed the redundant button — scrolling achieves the same result.
+- **AddTripView: Theming**: AddTripView now uses the app-wide accent colour (via `AppEnvironment`) instead of hardcoded blue, keeping it consistent across all colour themes. Background changed from `Color.clear` to `Color.appBackground` so the sheet matches the rest of the app.
+- **SettingsView: Name editing**: Tapping "Edit" now auto-focuses the name text field so the keyboard appears immediately.
+- **SettingsView: Home Agency placement**: Moved "Home Agency" from the App Info section into the Theme section, where it belongs contextually (it drives the Auto accent mode).
+- **HomeView: Default panel height**: Increased default snap height from 300 → 380 pts (roughly half screen) for a more useful initial view.
+- **HomeView: In Transit badge**: Changed the "In Transit" live-status badge to use a fixed green colour instead of the accent, so it reads as a live/active indicator regardless of the user's chosen theme.
+
+### Fixed
+- **Home panel content layout**: Panel content was being pushed to the bottom because `Color.clear` with `minHeight` expands to fill all available space. Fixed by locking the drag handle to an exact 48pt height.
+- **Locate button broken**: Button did nothing when GPS hadn't resolved yet. Restored fallback to MapKit's native user-location tracking when `lastLocation` is nil.
+- **Home panel drag**: Drag handle is now a 48px tall hit target (was ~24px), making it reliably swipeable to expand/collapse the panel.
+- **Map camera on load**: Map no longer zooms out to fit all historical trip markers across the GTA. Now centers on the user's GPS location at a neighbourhood-level zoom; falls back to top-10 most-visited hubs only if location is unavailable.
+- **Map camera jumping**: Removed the `onChange(of: mapMarkers.count)` handler that was re-fitting the map camera every time a marker loaded, causing the map to snap around unexpectedly.
+- **Locate button**: No longer falls back to a city-wide "fit all markers" view when GPS hasn't resolved yet. Button only zooms if a location is available.
+- **AddTripView double drag indicator**: Removed system sheet drag indicator (`.presentationDragIndicator(.visible)`) since AddTripView renders its own capsule handle.
+- **AddTripView confusing flow**: Removed "Arrival logged at X" timestamp label. Stop field is now optional — "Continue" is always enabled. Removed "Skip — I'm already on board" button; leaving the stop blank achieves the same result more clearly.
+- **Settings display name**: No longer shows the email prefix (e.g. "rhanna") as the user's name. Defaults to "Transit Rider" with an inline Edit button to set a local display name saved to UserDefaults.
+- **Settings Home Agency**: Moved from a standalone "Preferences" section into App Info.
+- **Build errors from Gemini refactor**: Fixed `CGFloat / Int` ambiguity in StatsView and TripsHistoryView, and resolved "compiler unable to type-check" error in StatsView by extracting `body` into `passportPanel`, `panelHeader`, `panelScrollContent`, and section-level `@ViewBuilder` helpers.
+
 ### Added
 - **Passport Tab UI**: Completely refactored the Stats tab into a premium 'Passport' experience, inspired by Flighty. Features an interactive map background with translucent journey paths, a draggable data panel, and a high-fidelity 'Transit Pass' hero card with holographic shimmer.
 - **Enhanced Trip History Rows**: Updated trip rows to show both the logging source (App vs SMS) and a clear 'Verified' status seal simultaneously, providing better data provenance at a glance.

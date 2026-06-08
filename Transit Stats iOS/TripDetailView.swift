@@ -41,13 +41,19 @@ struct TripDetailView: View {
                                         RoundedRectangle(cornerRadius: 28)
                                             .stroke(accent.opacity(0.3), lineWidth: 1)
                                     )
-                                
-                                Text(trip.route.isEmpty ? "?" : trip.route)
-                                    .font(.system(size: 44, weight: .black, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .minimumScaleFactor(0.5)
-                                    .lineLimit(1)
-                                    .padding(10)
+
+                                if trip.route.isEmpty {
+                                    Image(systemName: "tram.fill")
+                                        .font(.system(size: 38, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.35))
+                                } else {
+                                    Text(trip.route)
+                                        .font(.system(size: 44, weight: .black, design: .rounded))
+                                        .foregroundColor(.white)
+                                        .minimumScaleFactor(0.5)
+                                        .lineLimit(1)
+                                        .padding(10)
+                                }
                             }
                             .shadow(color: accent.opacity(0.2), radius: 20, x: 0, y: 10)
 
@@ -194,12 +200,8 @@ struct TripDetailView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: { dismiss() }) {
                         Text("Done")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(Capsule())
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.8))
                     }
                 }
             }

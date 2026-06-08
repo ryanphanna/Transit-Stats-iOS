@@ -64,7 +64,7 @@ struct TripsHistoryView: View {
             .ignoresSafeArea()
             
             // Background dimming
-            Color.black.opacity(min(0.4, (effectivePanelHeight - 140) / 1000))
+            Color.black.opacity(min(0.4, Double(effectivePanelHeight - 140) / 1000.0))
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
 
@@ -206,6 +206,8 @@ struct TripsHistoryView: View {
         }
         .sheet(item: $selectedTrip) { trip in
             TripDetailView(trip: trip)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
