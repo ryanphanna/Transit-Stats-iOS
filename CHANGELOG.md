@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **AddTripView: GPS start location missed on slow fix**: `locateUser()` previously waited a blind 1.5s before proceeding. Now polls every 250ms for an accurate fix, up to 5 seconds, so trips started immediately after tapping Locate still capture a valid start coordinate.
+
 ### Added
 - **Linked trips / Journey view**: `TripRecord` now stores `journeyId` (synced from Firestore). In the Trips list, trips sharing a journey are connected with a vertical line and a link badge. In TripDetailView, a Journey section shows the other legs with route, stop, and duration — plus an Unlink button that clears the `journeyId` locally and in Firestore.
 
