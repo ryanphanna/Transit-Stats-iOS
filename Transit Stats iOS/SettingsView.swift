@@ -43,6 +43,8 @@ struct SettingsView: View {
                             }
                             .overlay(Circle().stroke(accent.opacity(0.25), lineWidth: 1))
                         }
+                        .buttonStyle(.borderless)
+
                         VStack(alignment: .leading, spacing: 3) {
                             if isEditingName {
                                 TextField("Your name", text: $displayName)
@@ -72,6 +74,7 @@ struct SettingsView: View {
                         }
                         .font(.caption)
                         .foregroundColor(accent)
+                        .buttonStyle(.borderless)
                     }
                     .padding(.vertical, 4)
                 }
@@ -79,7 +82,7 @@ struct SettingsView: View {
                 Section("Plan") {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(profile?.isPremium == true ? "Transit Stats Premium" : "Transit Stats Free")
+                            Text(profile?.isPremium == true ? "Premium" : "Free")
                                 .fontWeight(.semibold)
                             Text(profile?.isPremium == true ? "All features unlocked" : "Basic trip logging")
                                 .font(.caption)
