@@ -264,6 +264,7 @@ struct HomeView: View {
         .sheet(isPresented: $isShowingAddTripSheet) {
             AddTripView()
                 .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
         }
         .sheet(isPresented: $isShowingSettingsSheet) {
             SettingsView()

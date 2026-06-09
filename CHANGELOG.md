@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **AddTripView: Double drag indicator**: Suppressed the system sheet drag indicator (`.presentationDragIndicator(.hidden)`) since AddTripView renders its own capsule handle, removing the duplicate lines.
+- **AddTripView: No way to dismiss**: Added an ✕ button to the top-right of the sheet header so users can cancel without having to swipe down.
 - **StatsView: Streak calculation**: Streak now counts days with any logged trip (was incorrectly filtering to completed trips only, causing the streak to show 0 for users with many trips that don't have an end time).
 - **StatsView: Rank system removed**: Removed the rank badge and rank computed property entirely from the passport card. The identity row now shows only the rider's nickname and join date.
 - **StatsView: Redundant Identification card**: Removed the separate "Identification" card. Rider nickname, rank badge, and join date are now merged directly into the Passport card.

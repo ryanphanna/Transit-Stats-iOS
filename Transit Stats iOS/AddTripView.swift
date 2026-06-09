@@ -123,12 +123,27 @@ struct AddTripView: View {
             Color.appBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Drag handle
-                Capsule()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: 36, height: 5)
-                    .padding(.top, 14)
-                    .padding(.bottom, 20)
+                // Drag handle + dismiss
+                ZStack {
+                    Capsule()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 36, height: 5)
+                        .frame(maxWidth: .infinity)
+                    HStack {
+                        Spacer()
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.45))
+                                .padding(7)
+                                .background(Color.white.opacity(0.08))
+                                .clipShape(Circle())
+                        }
+                        .padding(.trailing, 20)
+                    }
+                }
+                .padding(.top, 14)
+                .padding(.bottom, 20)
 
                 // Progress indicator
                 HStack(spacing: 8) {
