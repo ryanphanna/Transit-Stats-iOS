@@ -475,11 +475,12 @@ class SyncManager: ObservableObject {
                 let source = data["source"] as? String ?? "ios"
                 let isPublic = data["isPublic"] as? Bool ?? false
                 let timezone = data["timezone"] as? String ?? TimeZone.current.identifier
-                
+                let journeyId = data["journeyId"] as? String
+
                 // Fetch existing SwiftData record
                 let descriptor = FetchDescriptor<TripRecord>(predicate: #Predicate { $0.id == id })
                 let existing = try? context.fetch(descriptor).first
-                
+
                 if let record = existing {
                     record.route = route
                     record.direction = direction
@@ -501,6 +502,7 @@ class SyncManager: ObservableObject {
                     record.source = source
                     record.isPublic = isPublic
                     record.timezone = timezone
+                    record.journeyId = journeyId
                     record.isSynced = true
                 } else {
                     let record = TripRecord(
@@ -526,7 +528,8 @@ class SyncManager: ObservableObject {
                         isPublic: isPublic,
                         timezone: timezone,
                         userId: userId,
-                        isSynced: true
+                        isSynced: true,
+                        journeyId: journeyId
                     )
                     context.insert(record)
                 }

@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Linked trips / Journey view**: `TripRecord` now stores `journeyId` (synced from Firestore). In the Trips list, trips sharing a journey are connected with a vertical line and a link badge. In TripDetailView, a Journey section shows the other legs with route, stop, and duration — plus an Unlink button that clears the `journeyId` locally and in Firestore.
+
 ### Changed
 - **Navigation restructure**: Tabs are now Trips | Explore | Stats (was Home | Trips | Stats). Added a persistent floating "GO" pill button above the tab bar that opens the trip logger from any tab.
 

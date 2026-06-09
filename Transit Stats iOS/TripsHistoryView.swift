@@ -169,27 +169,47 @@ struct TripsHistoryView: View {
                             .padding(.vertical, 4)
 
                             if !filtered.isEmpty {
-                                LazyVStack(spacing: 10) {
-                                    ForEach(filtered) { trip in
-                                        Button(action: { selectedTrip = trip }) {
-                                            TripRow(trip: trip)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .contextMenu {
-                                            Button(role: .destructive, action: { deleteTrip(trip) }) {
-                                                Label("Delete Trip", systemImage: "trash")
+                                LazyVStack(spacing: 0) {
+                                    ForEach(Array(filtered.enumerated()), id: \.element.id) { index, trip in
+                                        let prevTrip = index > 0 ? filtered[index - 1] : nil
+                                        let nextTrip = index < filtered.count - 1 ? filtered[index + 1] : nil
+                                        let linkedAbove = prevTrip?.journeyId != nil && prevTrip?.journeyId == trip.journeyId
+                                        let linkedBelow = nextTrip?.journeyId != nil && nextTrip?.journeyId == trip.journeyId
+
+                                        VStack(spacing: 0) {
+                                            if linkedAbove {
+                                                HStack {
+                                                    Spacer().frame(width: 38)
+                                                    Rectangle()
+                                                        .fill(accent.opacity(0.4))
+                                                        .frame(width: 2, height: 8)
+                                                    Spacer()
+                                                }
+                                                .padding(.horizontal, 16)
                                             }
-                                        }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                            Button(role: .destructive) {
-                                                deleteTrip(trip)
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
+
+                                            Button(action: { selectedTrip = trip }) {
+                                                TripRow(trip: trip, isLinked: linkedAbove || linkedBelow)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .contextMenu {
+                                                Button(role: .destructive, action: { deleteTrip(trip) }) {
+                                                    Label("Delete Trip", systemImage: "trash")
+                                                }
+                                            }
+                                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                                Button(role: .destructive) { deleteTrip(trip) } label: {
+                                                    Label("Delete", systemImage: "trash")
+                                                }
+                                            }
+                                            .padding(.horizontal, 16)
+
+                                            if !linkedBelow {
+                                                Spacer().frame(height: 10)
                                             }
                                         }
                                     }
                                 }
-                                .padding(.horizontal, 16)
                                 .padding(.bottom, 110)
                             } else {
                                 // Empty state

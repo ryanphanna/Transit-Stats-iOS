@@ -1,14 +1,23 @@
 import SwiftUI
 import SwiftData
 import FirebaseAuth
+import FirebaseFirestore
 import PhotosUI
 import MapKit
 
 struct TripDetailView: View {
     @EnvironmentObject private var appEnv: AppEnvironment
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \TripRecord.startTime, order: .reverse) private var allTrips: [TripRecord]
     let trip: TripRecord
     @Environment(\.dismiss) private var dismiss
     private var accent: Color { appEnv.accent }
+
+    private var linkedTrips: [TripRecord] {
+        guard let jid = trip.journeyId else { return [] }
+        return allTrips.filter { $0.journeyId == jid && $0.id != trip.id }
+            .sorted { $0.startTime < $1.startTime }
+    }
 
     private var durationText: String {
         guard let d = trip.durationMinutes else { return "—" }
@@ -186,6 +195,11 @@ struct TripDetailView: View {
                         .cornerRadius(20)
                         .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.06), lineWidth: 1))
 
+                        // Journey section — linked trips
+                        if !linkedTrips.isEmpty || trip.journeyId != nil {
+                            journeySection
+                        }
+
                         // Path Map (if available)
                         if !trip.path.isEmpty || (trip.startLatitude != nil && trip.endLatitude != nil) {
                             pathMap
@@ -198,6 +212,96 @@ struct TripDetailView: View {
                     .padding(.bottom, 40)
                 }
             }
+        }
+    }
+
+    // MARK: - Journey Section
+
+    private var journeySection: some View {
+        VStack(spacing: 0) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "link")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(accent)
+                    Text("JOURNEY")
+                        .font(.system(size: 10, weight: .black))
+                        .kerning(1.5)
+                        .foregroundColor(accent)
+                }
+                Spacer()
+                // Unlink button
+                Button(action: unlinkFromJourney) {
+                    Text("Unlink")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.35))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            if linkedTrips.isEmpty {
+                // Journey ID exists but no other trips synced yet
+                Text("Other trips in this journey haven't synced yet.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.3))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+            } else {
+                ForEach(Array(linkedTrips.enumerated()), id: \.element.id) { index, linked in
+                    Divider().background(Color.white.opacity(0.06))
+                    HStack(spacing: 12) {
+                        // Leg number
+                        Text("\(index + 1)")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(accent)
+                            .frame(width: 20, height: 20)
+                            .background(accent.opacity(0.12))
+                            .clipShape(Circle())
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(linked.route.isEmpty ? "Unknown route" : linked.route)
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.white)
+                            if let stop = linked.startStopName {
+                                Text(stop)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.white.opacity(0.4))
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                        if let d = linked.durationMinutes {
+                            Text("\(d)m")
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .foregroundColor(accent.opacity(0.6))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+            }
+        }
+        .background(Color.white.opacity(0.03))
+        .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(accent.opacity(0.12), lineWidth: 1))
+    }
+
+    private func unlinkFromJourney() {
+        trip.journeyId = nil
+        try? modelContext.save()
+        // Write the unlink back to Firestore
+        if let uid = AuthManager.shared.currentUser?.uid {
+            let db = Firestore.firestore()
+            db.collection("trips").document(trip.id).updateData([
+                "journeyId": FieldValue.delete()
+            ])
         }
     }
 

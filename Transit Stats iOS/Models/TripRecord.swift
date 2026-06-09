@@ -26,6 +26,7 @@ final class TripRecord {
     var timezone: String
     var userId: String
     var isSynced: Bool
+    var journeyId: String?
     
     /// JSON encoded array of TripPathPoint
     @Attribute(.externalStorage) var pathData: Data?
@@ -54,6 +55,7 @@ final class TripRecord {
         timezone: String = TimeZone.current.identifier,
         userId: String = "",
         isSynced: Bool = false,
+        journeyId: String? = nil,
         pathData: Data? = nil
     ) {
         self.id = id
@@ -79,6 +81,7 @@ final class TripRecord {
         self.timezone = timezone
         self.userId = userId
         self.isSynced = isSynced
+        self.journeyId = journeyId
         self.pathData = pathData
     }
     

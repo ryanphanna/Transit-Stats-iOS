@@ -6,6 +6,7 @@ import PhotosUI
 struct TripRow: View {
     @EnvironmentObject private var appEnv: AppEnvironment
     let trip: TripRecord
+    var isLinked: Bool = false
     private var accent: Color { appEnv.accent }
 
     private var originLabel: String {
@@ -69,10 +70,17 @@ struct TripRow: View {
 
             Spacer()
 
-            if let duration = trip.durationMinutes {
-                Text("\(duration)m")
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundColor(accent.opacity(0.7))
+            VStack(alignment: .trailing, spacing: 4) {
+                if let duration = trip.durationMinutes {
+                    Text("\(duration)m")
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundColor(accent.opacity(0.7))
+                }
+                if isLinked {
+                    Image(systemName: "link")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(accent.opacity(0.5))
+                }
             }
         }
         .padding(14)
