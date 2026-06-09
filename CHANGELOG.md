@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.3.0] - 2026-06-08
 
 ### Changed
 - **Architectural Overhaul (MVVM)**: Implemented Model-View-ViewModel architecture across all core views (`HomeView`, `AddTripView`, `StatsView`). Extracted massive amounts of business logic, state management, and analytical calculations into dedicated ViewModels, reducing view file sizes by ~30-50%.
