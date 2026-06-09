@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
     - `TripService`: Specialized Firestore CRUD operations and backend command processing.
     - `SyncManager`: Isolated real-time synchronization and SwiftData reconciliation logic.
 - **Project Directory Restructuring**: Reorganized the entire codebase into a logical folder hierarchy (`Models`, `Views`, `ViewModels`, `Services`, `Utilities`, `Resources`) for improved maintainability and discovery.
+- **View Componentization**: Decomposed massive view files (`HomeView`, `StatsView`) into modular, reusable components. Extracted ~10 subviews into dedicated files under `Views/Components/`, reducing main view file sizes by ~80% and improving UI testing isolation.
 
 ### Fixed
 - **AddTripView: GPS start location missed on slow fix**: `locateUser()` previously waited a blind 1.5s before proceeding. Now polls every 250ms for an accurate fix, up to 5 seconds, so trips started immediately after tapping Locate still capture a valid start coordinate.
