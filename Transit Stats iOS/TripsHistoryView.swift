@@ -13,6 +13,7 @@ struct TripsHistoryView: View {
     @State private var sourceFilter = "all"
     @State private var agencyFilter: String? = nil
     @State private var dateFilter = "all"
+    @State private var expandedFilter: String? = nil
     
     // Panel State
     private let snapHeights: [CGFloat] = [140, 450, 750]
@@ -119,34 +120,80 @@ struct TripsHistoryView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {
-                            // Date filter
-                            ScrollView(.horizontal, showsIndicators: false) {
+                            // Filter categories
+                            VStack(alignment: .leading, spacing: 0) {
                                 HStack(spacing: 8) {
-                                    filterChip("All time", active: dateFilter == "all")  { dateFilter = "all" }
-                                    filterChip("This week", active: dateFilter == "week") { dateFilter = "week" }
-                                    filterChip("This month", active: dateFilter == "month") { dateFilter = "month" }
-                                    filterChip("This year", active: dateFilter == "year")  { dateFilter = "year" }
-                                }
-                                .padding(.horizontal, 16)
-                            }
-
-                            // Source + agency filter
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    filterChip("All sources", active: sourceFilter == "all") { sourceFilter = "all" }
-                                    filterChip("App", active: sourceFilter == "app") { sourceFilter = "app" }
-                                    filterChip("SMS", active: sourceFilter == "sms") { sourceFilter = "sms" }
-                                    if availableAgencies.count > 1 {
-                                        Divider().frame(height: 16).background(Color.white.opacity(0.15))
-                                        ForEach(availableAgencies, id: \.self) { agency in
-                                            filterChip(agency, active: agencyFilter == agency) {
-                                                agencyFilter = agencyFilter == agency ? nil : agency
-                                            }
-                                        }
+                                    filterCategory(
+                                        "Time",
+                                        isFiltered: dateFilter != "all",
+                                        isExpanded: expandedFilter == "time"
+                                    ) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        expandedFilter = expandedFilter == "time" ? nil : "time"
+                                    }}
+                                    filterCategory(
+                                        "Source",
+                                        isFiltered: sourceFilter != "all",
+                                        isExpanded: expandedFilter == "source"
+                                    ) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        expandedFilter = expandedFilter == "source" ? nil : "source"
+                                    }}
+                                    if !availableAgencies.isEmpty {
+                                        filterCategory(
+                                            "Agency",
+                                            isFiltered: agencyFilter != nil,
+                                            isExpanded: expandedFilter == "agency"
+                                        ) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            expandedFilter = expandedFilter == "agency" ? nil : "agency"
+                                        }}
                                     }
                                 }
                                 .padding(.horizontal, 16)
+
+                                if expandedFilter == "time" {
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            filterChip("All time",   active: dateFilter == "all")   { dateFilter = "all";   withAnimation { expandedFilter = nil } }
+                                            filterChip("This week",  active: dateFilter == "week")  { dateFilter = "week";  withAnimation { expandedFilter = nil } }
+                                            filterChip("This month", active: dateFilter == "month") { dateFilter = "month"; withAnimation { expandedFilter = nil } }
+                                            filterChip("This year",  active: dateFilter == "year")  { dateFilter = "year";  withAnimation { expandedFilter = nil } }
+                                        }
+                                        .padding(.horizontal, 16)
+                                    }
+                                    .padding(.top, 8)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
+
+                                if expandedFilter == "source" {
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            filterChip("All",  active: sourceFilter == "all") { sourceFilter = "all"; withAnimation { expandedFilter = nil } }
+                                            filterChip("App",  active: sourceFilter == "app") { sourceFilter = "app"; withAnimation { expandedFilter = nil } }
+                                            filterChip("SMS",  active: sourceFilter == "sms") { sourceFilter = "sms"; withAnimation { expandedFilter = nil } }
+                                        }
+                                        .padding(.horizontal, 16)
+                                    }
+                                    .padding(.top, 8)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
+
+                                if expandedFilter == "agency" {
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            filterChip("All", active: agencyFilter == nil) { agencyFilter = nil; withAnimation { expandedFilter = nil } }
+                                            ForEach(availableAgencies, id: \.self) { agency in
+                                                filterChip(agency, active: agencyFilter == agency) {
+                                                    agencyFilter = agencyFilter == agency ? nil : agency
+                                                    withAnimation { expandedFilter = nil }
+                                                }
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                    }
+                                    .padding(.top, 8)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                                }
                             }
+                            .padding(.vertical, 4)
 
                             if !filtered.isEmpty {
                                 LazyVStack(spacing: 10) {
@@ -216,6 +263,30 @@ struct TripsHistoryView: View {
             modelContext.delete(trip)
             try? modelContext.save()
         }
+    }
+
+    private func filterCategory(_ label: String, isFiltered: Bool, isExpanded: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if isFiltered {
+                    Circle()
+                        .fill(accent)
+                        .frame(width: 5, height: 5)
+                }
+                Text(label)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(isExpanded ? .white : (isFiltered ? accent : .white.opacity(0.6)))
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.white.opacity(0.35))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(isExpanded ? Color.white.opacity(0.1) : (isFiltered ? accent.opacity(0.1) : Color.white.opacity(0.06)))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(isFiltered ? accent.opacity(0.25) : Color.white.opacity(0.07), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     private func filterChip(_ label: String, active: Bool, action: @escaping () -> Void) -> some View {

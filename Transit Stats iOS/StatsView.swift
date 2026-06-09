@@ -358,7 +358,7 @@ struct StatsView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "tram.fill")
                         .font(.system(size: 8))
-                    Text("PASSPORT • PASS • PASAPORTE")
+                    Text("PERSONAL TRANSIT RECORD")
                         .font(.system(size: 8, weight: .black))
                         .kerning(1.5)
                 }
@@ -417,24 +417,6 @@ struct StatsView: View {
                         .foregroundColor(.white.opacity(0.3))
                 }
                 Spacer()
-                if let img = profileImage {
-                    Image(uiImage: img)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 36, height: 36)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(accent.opacity(0.3), lineWidth: 1))
-                } else {
-                    Circle()
-                        .fill(accent.opacity(0.12))
-                        .frame(width: 36, height: 36)
-                        .overlay(
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(accent.opacity(0.5))
-                        )
-                        .overlay(Circle().stroke(accent.opacity(0.2), lineWidth: 1))
-                }
             }
         }
         .padding(24)
