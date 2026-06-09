@@ -16,7 +16,7 @@ struct MainTabView: View {
     private var accent: Color { appEnv.accent }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: .bottomTrailing) {
             TabView {
                 TripsHistoryView()
                     .tabItem { Label("Trips", systemImage: "clock.fill") }
@@ -30,23 +30,19 @@ struct MainTabView: View {
             .onAppear { appEnv.homeAgency = topAgency }
             .onChange(of: topAgency) { _, new in appEnv.homeAgency = new }
 
-            // Floating Go button — always accessible above tab bar
+            // Go button — Liquid Glass style, sits to the right of the tab bar
             Button(action: { isShowingGoSheet = true }) {
-                HStack(spacing: 7) {
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("GO")
-                        .font(.system(size: 13, weight: .black))
-                        .kerning(1.5)
-                }
-                .padding(.horizontal, 28)
-                .padding(.vertical, 14)
-                .background(accent)
-                .foregroundColor(.white)
-                .clipShape(Capsule())
-                .shadow(color: accent.opacity(0.45), radius: 14, x: 0, y: 6)
+                Image(systemName: "tram.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(accent)
+                    .frame(width: 52, height: 52)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(accent.opacity(0.35), lineWidth: 1.5))
+                    .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 3)
             }
-            .padding(.bottom, 78)
+            .padding(.trailing, 20)
+            .padding(.bottom, 22)
         }
         .sheet(isPresented: $isShowingGoSheet) {
             AddTripView()
