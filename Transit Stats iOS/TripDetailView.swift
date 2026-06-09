@@ -16,17 +16,33 @@ struct TripDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.appBackground.ignoresSafeArea()
-                
-                // Subtle top gradient glow
-                VStack {
-                    LinearGradient(colors: [accent.opacity(0.12), .clear], startPoint: .top, endPoint: .bottom)
-                        .frame(height: 300)
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
+            // Subtle top gradient glow
+            VStack {
+                LinearGradient(colors: [accent.opacity(0.12), .clear], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 300)
+                Spacer()
+            }
+            .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Manual header — replaces NavigationStack to avoid nav bar disappearing
+                HStack {
+                    Text("Trip Details")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
                     Spacer()
+                    Button(action: { dismiss() }) {
+                        Text("Done")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                 }
-                .ignoresSafeArea()
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 12)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
@@ -180,17 +196,6 @@ struct TripDetailView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
-                }
-            }
-            .navigationTitle("Trip Details")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { dismiss() }) {
-                        Text("Done")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.8))
-                    }
                 }
             }
         }
