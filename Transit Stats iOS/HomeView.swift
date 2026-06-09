@@ -187,6 +187,7 @@ struct HomeView: View {
                     .padding(.trailing, 16)
                 }
                 .padding(.bottom, effectivePanelHeight + 16)
+                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: effectivePanelHeight)
             }
         // Bottom panel — ZStack overlay so tab bar stays visible
         VStack(spacing: 0) {

@@ -123,17 +123,6 @@ struct SettingsView: View {
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
                             .lineSpacing(2)
-
-                        if let agency = appEnv.homeAgency {
-                            HStack {
-                                Text("Home Agency")
-                                    .font(.system(size: 13))
-                                Spacer()
-                                Text(agency)
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.gray)
-                            }
-                        }
                     }
                     .padding(.vertical, 6)
                 } header: {
