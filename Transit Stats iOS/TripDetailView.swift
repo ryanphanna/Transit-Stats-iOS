@@ -128,10 +128,6 @@ struct TripDetailView: View {
                                 compactStat(label: "DATE",     value: trip.startTime.formatted(.dateTime.day().month()))
                                 Divider().background(Color.white.opacity(0.06)).frame(height: 32)
                                 compactStat(label: "DURATION", value: durationText)
-                                Divider().background(Color.white.opacity(0.06)).frame(height: 32)
-                                compactStat(label: "SOURCE",   value: trip.source == "sms" ? "SMS" : "App")
-                                Divider().background(Color.white.opacity(0.06)).frame(height: 32)
-                                compactStat(label: "SYNC",     value: trip.isSynced ? "✓" : "Pending")
                             }
                             .padding(.vertical, 12)
 
@@ -155,6 +151,20 @@ struct TripDetailView: View {
                                 }
                                 .padding(.horizontal, 16).padding(.vertical, 10)
                             }
+
+                            // Source + sync small print
+                            Divider().background(Color.white.opacity(0.06))
+                            HStack(spacing: 6) {
+                                Text("Logged via \(trip.source == "sms" ? "SMS" : "App")")
+                                Text("·").foregroundColor(.white.opacity(0.2))
+                                Text(trip.isSynced ? "Synced" : "Sync pending")
+                                    .foregroundColor(trip.isSynced ? .white.opacity(0.25) : accent.opacity(0.6))
+                            }
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.25))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
                         }
                         .background(Color.white.opacity(0.03))
                         .cornerRadius(20)

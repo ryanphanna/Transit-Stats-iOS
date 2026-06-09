@@ -35,20 +35,20 @@ struct TripRow: View {
             .background(trip.route.isEmpty ? Color.white.opacity(0.05) : accent.opacity(0.85))
             .cornerRadius(12)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(originLabel)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(hasOrigin ? .white : .white.opacity(0.35))
-                        .lineLimit(1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(originLabel)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(hasOrigin ? .white : .white.opacity(0.35))
+                    .lineLimit(1)
 
-                    if let end = trip.endStopName {
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white.opacity(0.25))
+                if let end = trip.endStopName {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(.white.opacity(0.2))
                         Text(end)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white.opacity(0.55))
                             .lineLimit(1)
                     }
                 }
@@ -69,29 +69,10 @@ struct TripRow: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 6) {
-                if let duration = trip.durationMinutes {
-                    Text("\(duration)m")
-                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                        .foregroundColor(accent)
-                }
-                
-                HStack(spacing: 6) {
-                    // Source Icon
-                    Image(systemName: trip.source == "sms" ? "message.fill" : "iphone")
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.25))
-
-                    if trip.isSynced {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(accent.opacity(0.8))
-                    } else {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.4))
-                    }
-                }
+            if let duration = trip.durationMinutes {
+                Text("\(duration)m")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundColor(accent.opacity(0.7))
             }
         }
         .padding(14)

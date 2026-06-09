@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **HomeView: Ready state panel**: Replaced the minimal "Ready to go?" + single button layout with a richer panel showing a quick stats strip (total trips / this week / last trip), the Start New Trip button, quick-start shortcuts for frequent routes, and a compact recent trips list.
+- **TripRow: Stop name truncation**: Changed FROM → TO from a single truncated HStack to a vertical stack (origin on line 1, destination indented below with a down arrow), so full stop names are readable without ellipsis.
+- **TripDetailView: Source/sync moved to footer**: Removed SOURCE and SYNC from the prominent stats strip (which now shows DATE and DURATION only). Source and sync status now appear as small-print text at the bottom of the info card ("Logged via App · Synced").
+
 ### Fixed
 - **AddTripView: Double drag indicator**: Suppressed the system sheet drag indicator (`.presentationDragIndicator(.hidden)`) since AddTripView renders its own capsule handle, removing the duplicate lines.
 - **AddTripView: No way to dismiss**: Added an ✕ button to the top-right of the sheet header so users can cancel without having to swipe down.
