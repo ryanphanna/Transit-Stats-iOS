@@ -755,10 +755,15 @@ struct AddTripView: View {
         isLocating = true
         locationManager.requestPermission()
         locationManager.startUpdating()
-        
-        // Give it a second to find location
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isLocating = false
+
+        // Poll up to 5s for a sufficiently accurate fix, then proceed with whatever we have
+        Task {
+            let deadline = Date().addingTimeInterval(5)
+            while Date() < deadline {
+                if locationManager.isAccuracySufficient { break }
+                try? await Task.sleep(nanoseconds: 250_000_000) // 0.25s
+            }
+            await MainActor.run { isLocating = false }
         }
     }
 
