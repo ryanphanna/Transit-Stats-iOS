@@ -6,6 +6,7 @@ import FirebaseAuth
 struct AddTripView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @StateObject private var viewModel = AddTripViewModel()
     @StateObject private var authManager = AuthManager.shared
     @StateObject private var locationManager = LocationManager.shared
     @EnvironmentObject private var appEnv: AppEnvironment
@@ -15,105 +16,14 @@ struct AddTripView: View {
     @Query private var stops: [Stop]
     @Query private var profiles: [UserProfile]
 
-    // Step 1: waiting at stop
-    @State private var stopText = ""
-    
-    // OCR & Camera State
-    @State private var showingImagePicker = false
-    @State private var capturedImage: UIImage? = nil
-    @State private var isProcessingOCR = false
-    @State private var detectedRoutes: [String] = []
-    @State private var detectedStops: [String] = []
-    @State private var showingRoutePicker = false
-    @State private var showingStopPicker = false
-    
     private var profile: UserProfile? { profiles.first }
     
-    @State private var isLocating = false
-
     private var nearbyHubs: [NearbyHub] {
-        guard let location = locationManager.lastLocation else { return [] }
-        
-        // 1. Find all stops within 500m
-        let nearbyStops = stops.filter { stop in
-            let stopLocation = CLLocation(latitude: stop.latitude, longitude: stop.longitude)
-            return stopLocation.distance(from: location) < 500
-        }
-        
-        // 2. Group by hubId (or id if no hubId)
-        var hubGroups: [String: [Stop]] = [:]
-        for stop in nearbyStops {
-            let key = stop.hubId ?? stop.id
-            hubGroups[key, default: []].append(stop)
-        }
-        
-        // 3. Map to NearbyHub objects
-        return hubGroups.map { key, stops in
-            let bestStop = stops.first! // For now just take the one with the shortest distance ideally, or just first
-            let distance = CLLocation(latitude: bestStop.latitude, longitude: bestStop.longitude).distance(from: location)
-            
-            return NearbyHub(
-                id: key,
-                name: bestStop.name,
-                isVerified: stops.contains(where: { $0.verified }),
-                distance: distance,
-                stops: stops
-            )
-        }
-        .sorted { $0.distance < $1.distance }
+        viewModel.getNearbyHubs(stops: stops)
     }
 
     private var stopSuggestions: [StopSuggestion] {
-        let query = stopText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else { return [] }
-        
-        // Find matching stop names from trip history
-        var historyMatches: [String] = []
-        var historySeen = Set<String>()
-        for trip in tripHistory {
-            if let name = trip.startStopName,
-               name.lowercased().contains(query),
-               !historySeen.contains(name.lowercased()) {
-                historyMatches.append(name)
-                historySeen.insert(name.lowercased())
-            }
-            if historyMatches.count >= 5 { break }
-        }
-        
-        // Find matching stops from stop library
-        let libraryMatches = stops.filter { stop in
-            stop.name.lowercased().contains(query) && !historySeen.contains(stop.name.lowercased())
-        }
-        .sorted { (s1, s2) -> Bool in
-            if s1.verified != s2.verified {
-                return s1.verified && !s2.verified
-            }
-            return (s1.lastUsed ?? Date.distantPast) > (s2.lastUsed ?? Date.distantPast)
-        }
-        
-        var results: [StopSuggestion] = historyMatches.map { StopSuggestion(name: $0, isFromHistory: true, isVerified: false) }
-        for stop in libraryMatches.prefix(5 - results.count) {
-            results.append(StopSuggestion(name: stop.name, isFromHistory: false, isVerified: stop.verified))
-        }
-        return results
-    }
-
-    // Step 2: boarded — enter route
-    @State private var routeText = ""
-    @State private var agency = "TTC"
-    @State private var direction = ""
-
-    @State private var step: BoardingStep = .atStop
-    @State private var isLoading = false
-    @State private var showingAdvancedOptions = false
-    
-    @State private var suggestions: [PredictionEngine.Prediction] = []
-
-    // Timestamp when the user first taps "I'm at the stop"
-    @State private var waitingSince: Date? = nil
-
-    enum BoardingStep {
-        case atStop, onBoard
+        viewModel.getStopSuggestions(tripHistory: tripHistory, stops: stops)
     }
 
     let agencies = ["TTC", "GO", "UP Express", "VIA Rail", "YRT", "MiWay", "HSR"]
@@ -147,19 +57,19 @@ struct AddTripView: View {
 
                 // Progress indicator
                 HStack(spacing: 8) {
-                    stepDot(label: "WAITING", active: step == .atStop, done: step == .onBoard)
+                    stepDot(label: "WAITING", active: viewModel.step == .atStop, done: viewModel.step == .onBoard)
                     Rectangle()
-                        .fill(step == .onBoard ? accent : Color.white.opacity(0.12))
+                        .fill(viewModel.step == .onBoard ? accent : Color.white.opacity(0.12))
                         .frame(height: 1)
-                        .animation(.easeInOut(duration: 0.4), value: step)
-                    stepDot(label: "BOARDED", active: step == .onBoard, done: false)
+                        .animation(.easeInOut(duration: 0.4), value: viewModel.step)
+                    stepDot(label: "BOARDED", active: viewModel.step == .onBoard, done: false)
                 }
                 .padding(.horizontal, 32)
                 .padding(.bottom, 28)
 
                 // Step content
                 Group {
-                    if step == .atStop {
+                    if viewModel.step == .atStop {
                         atStopView
                             .transition(.asymmetric(
                                 insertion: .move(edge: .leading).combined(with: .opacity),
@@ -173,36 +83,37 @@ struct AddTripView: View {
                             ))
                     }
                 }
-                .animation(.spring(response: 0.45, dampingFraction: 0.82), value: step)
+                .animation(.spring(response: 0.45, dampingFraction: 0.82), value: viewModel.step)
 
                 Spacer()
             }
         }
         .preferredColorScheme(.dark)
         .onAppear {
+            viewModel.modelContext = modelContext
             locationManager.requestPermission()
             locationManager.startUpdating()
             
             // Set default agency from profile
             if let defaultAg = profile?.defaultAgency {
-                self.agency = defaultAg
+                viewModel.agency = defaultAg
             }
         }
         .onDisappear {
             locationManager.stopUpdating()
         }
-        .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(image: $capturedImage)
+        .sheet(isPresented: $viewModel.showingImagePicker) {
+            ImagePicker(image: $viewModel.capturedImage)
         }
-        .onChange(of: capturedImage) { _, newValue in
+        .onChange(of: viewModel.capturedImage) { _, newValue in
             if let image = newValue {
-                processCapturedImage(image)
+                viewModel.processCapturedImage(image)
             }
         }
-        .confirmationDialog("Select Route", isPresented: $showingRoutePicker, titleVisibility: .visible) {
-            ForEach(detectedRoutes, id: \.self) { route in
+        .confirmationDialog("Select Route", isPresented: $viewModel.showingRoutePicker, titleVisibility: .visible) {
+            ForEach(viewModel.detectedRoutes, id: \.self) { route in
                 Button(route) {
-                    routeText = route
+                    viewModel.routeText = route
                     submitTrip()
                 }
             }
@@ -210,10 +121,10 @@ struct AddTripView: View {
         } message: {
             Text("Multiple routes detected in the photo.")
         }
-        .confirmationDialog("Select Stop", isPresented: $showingStopPicker, titleVisibility: .visible) {
-            ForEach(detectedStops, id: \.self) { stop in
+        .confirmationDialog("Select Stop", isPresented: $viewModel.showingStopPicker, titleVisibility: .visible) {
+            ForEach(viewModel.detectedStops, id: \.self) { stop in
                 Button(stop) {
-                    stopText = stop
+                    viewModel.stopText = stop
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -222,37 +133,6 @@ struct AddTripView: View {
         }
     }
     
-    private func processCapturedImage(_ image: UIImage) {
-        isProcessingOCR = true
-        VisionOCRManager.shared.processImage(image) { recognizedStrings in
-            DispatchQueue.main.async {
-                let routes = VisionOCRManager.shared.extractRoutes(from: recognizedStrings)
-                let stopNames = VisionOCRManager.shared.extractStopNames(from: recognizedStrings)
-                self.isProcessingOCR = false
-                
-                // Handle Stop Names
-                if stopNames.count == 1 && self.stopText.isEmpty {
-                    self.stopText = stopNames[0]
-                } else if stopNames.count > 1 && self.stopText.isEmpty {
-                    self.detectedStops = stopNames
-                    self.showingStopPicker = true
-                }
-                
-                // Handle Routes
-                if routes.count == 1 {
-                    self.routeText = routes[0]
-                    // If we found a route and a stop name was already set (or just found), start trip
-                    if !self.stopText.isEmpty {
-                        self.submitTrip()
-                    }
-                } else if routes.count > 1 {
-                    self.detectedRoutes = routes
-                    self.showingRoutePicker = true
-                }
-            }
-        }
-    }
-
     // MARK: - Step Views
 
     private var atStopView: some View {
@@ -278,7 +158,7 @@ struct AddTripView: View {
 
                     HStack(spacing: 10) {
                         ZStack(alignment: .trailing) {
-                            TextField("e.g. College St at Spadina", text: $stopText)
+                            TextField("e.g. College St at Spadina", text: $viewModel.stopText)
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.white)
                                 .padding(.vertical, 14)
@@ -289,7 +169,7 @@ struct AddTripView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(
-                                            stopText.isEmpty ? Color.white.opacity(0.1) : accent.opacity(0.4),
+                                            viewModel.stopText.isEmpty ? Color.white.opacity(0.1) : accent.opacity(0.4),
                                             lineWidth: 1
                                         )
                                 )
@@ -297,10 +177,10 @@ struct AddTripView: View {
                                 .submitLabel(.next)
                                 .onSubmit { startTripAtStop() }
 
-                            if stopText.isEmpty {
+                            if viewModel.stopText.isEmpty {
                                 Button(action: locateUser) {
                                     ZStack {
-                                        if isLocating {
+                                        if viewModel.isLocating {
                                             ProgressView().tint(accent)
                                                 .scaleEffect(0.8)
                                         } else {
@@ -315,7 +195,7 @@ struct AddTripView: View {
                                 }
                                 .padding(.trailing, 8)
                             } else {
-                                Button(action: { stopText = "" }) {
+                                Button(action: { viewModel.stopText = "" }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundColor(.white.opacity(0.2))
                                 }
@@ -323,9 +203,9 @@ struct AddTripView: View {
                             }
                         }
                         
-                        Button(action: { showingImagePicker = true }) {
+                        Button(action: { viewModel.showingImagePicker = true }) {
                             ZStack {
-                                if isProcessingOCR {
+                                if viewModel.isProcessingOCR {
                                     ProgressView().tint(accent)
                                 } else {
                                     Image(systemName: "camera.viewfinder")
@@ -341,19 +221,19 @@ struct AddTripView: View {
                                     .stroke(Color.white.opacity(0.1), lineWidth: 1)
                             )
                         }
-                        .disabled(isProcessingOCR)
+                        .disabled(viewModel.isProcessingOCR)
                     }
                     .padding(.horizontal, 20)
                 }
 
                 // Stop suggestions / Nearby stop/hub suggestions
-                if !stopText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if !viewModel.stopText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     let suggestions = stopSuggestions
                     if !suggestions.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(suggestions) { suggestion in
                                 Button(action: {
-                                    stopText = suggestion.name
+                                    viewModel.stopText = suggestion.name
                                     startTripAtStop()
                                 }) {
                                     HStack(spacing: 10) {
@@ -404,7 +284,7 @@ struct AddTripView: View {
                                     ForEach(nearbyHubs.prefix(5)) { hub in
                                         Button(action: {
                                             withAnimation(.spring()) {
-                                                stopText = hub.name
+                                                viewModel.stopText = hub.name
                                             }
                                         }) {
                                             VStack(alignment: .leading, spacing: 4) {
@@ -435,7 +315,7 @@ struct AddTripView: View {
                                 }
                                 .padding(.horizontal, 20)
                             }
-                        } else if isLocating {
+                        } else if viewModel.isLocating {
                             HStack(spacing: 12) {
                                 ProgressView().tint(.blue)
                                 Text("Finding nearby stops...")
@@ -488,12 +368,12 @@ struct AddTripView: View {
                     .foregroundColor(.white)
                     .padding(.top, 2)
 
-                if !stopText.isEmpty {
+                if !viewModel.stopText.isEmpty {
                     HStack(spacing: 6) {
                         Image(systemName: "mappin")
                             .font(.system(size: 10))
                             .foregroundColor(Color.white.opacity(0.35))
-                        Text(stopText)
+                        Text(viewModel.stopText)
                             .font(.system(size: 12))
                             .foregroundColor(Color.white.opacity(0.45))
                     }
@@ -511,7 +391,7 @@ struct AddTripView: View {
                         .padding(.horizontal, 28)
 
                     HStack(spacing: 12) {
-                        TextField("e.g. 506, Line 1, GO Lakeshore", text: $routeText)
+                        TextField("e.g. 506, Line 1, GO Lakeshore", text: $viewModel.routeText)
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white)
                             .padding(.vertical, 14)
@@ -521,17 +401,17 @@ struct AddTripView: View {
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
                                     .stroke(
-                                        routeText.isEmpty ? Color.white.opacity(0.1) : accent.opacity(0.5),
+                                        viewModel.routeText.isEmpty ? Color.white.opacity(0.1) : accent.opacity(0.5),
                                         lineWidth: 1
                                     )
                             )
                             .autocorrectionDisabled()
                             .submitLabel(.done)
-                            .onSubmit { if !routeText.isEmpty { submitTrip() } }
+                            .onSubmit { if !viewModel.routeText.isEmpty { submitTrip() } }
                         
-                        Button(action: { showingImagePicker = true }) {
+                        Button(action: { viewModel.showingImagePicker = true }) {
                             ZStack {
-                                if isProcessingOCR {
+                                if viewModel.isProcessingOCR {
                                     ProgressView().tint(accent)
                                 } else {
                                     Image(systemName: "camera.viewfinder")
@@ -547,13 +427,13 @@ struct AddTripView: View {
                                     .stroke(Color.white.opacity(0.1), lineWidth: 1)
                             )
                         }
-                        .disabled(isProcessingOCR)
+                        .disabled(viewModel.isProcessingOCR)
                     }
                     .padding(.horizontal, 20)
                 }
 
                 // Route suggestions based on history
-                if !suggestions.isEmpty {
+                if !viewModel.suggestions.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("SUGGESTED FOR THIS STOP")
                             .font(.system(size: 8, weight: .bold))
@@ -563,33 +443,33 @@ struct AddTripView: View {
                             
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 10) {
-                                ForEach(suggestions, id: \.route) { pred in
+                                ForEach(viewModel.suggestions, id: \.route) { pred in
                                     Button(action: {
-                                        routeText = pred.route
-                                        direction = pred.direction
+                                        viewModel.routeText = pred.route
+                                        viewModel.direction = pred.direction
                                         if let match = tripHistory.first(where: { $0.route == pred.route }) {
-                                            agency = match.agency
+                                            viewModel.agency = match.agency
                                         }
                                     }) {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(pred.route)
                                                 .font(.system(size: 14, weight: .bold))
-                                                .foregroundColor(routeText == pred.route ? .white : .orange)
+                                                .foregroundColor(viewModel.routeText == pred.route ? .white : .orange)
                                             
                                             if !pred.direction.isEmpty {
                                                 Text(pred.direction.uppercased())
                                                     .font(.system(size: 8, weight: .black))
-                                                    .foregroundColor(routeText == pred.route ? .white.opacity(0.8) : .white.opacity(0.4))
+                                                    .foregroundColor(viewModel.routeText == pred.route ? .white.opacity(0.8) : .white.opacity(0.4))
                                                     .kerning(0.5)
                                             }
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 10)
-                                        .background(routeText == pred.route ? accent : Color.white.opacity(0.08))
+                                        .background(viewModel.routeText == pred.route ? accent : Color.white.opacity(0.08))
                                         .cornerRadius(12)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 12)
-                                                .stroke(routeText == pred.route ? Color.clear : Color.white.opacity(0.05), lineWidth: 1)
+                                                .stroke(viewModel.routeText == pred.route ? Color.clear : Color.white.opacity(0.05), lineWidth: 1)
                                         )
                                     }
                                 }
@@ -600,9 +480,9 @@ struct AddTripView: View {
                 }
 
                 // Inline Direction Suggestions (visible when route is selected/typed and matches exist)
-                if !routeText.isEmpty {
-                    let dirPredictions = PredictionEngine.predict(history: tripHistory, stopName: stopText)
-                        .filter { $0.route == routeText }
+                if !viewModel.routeText.isEmpty {
+                    let dirPredictions = PredictionEngine.predict(history: tripHistory, stopName: viewModel.stopText)
+                        .filter { $0.route == viewModel.routeText }
                     
                     if !dirPredictions.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -615,13 +495,13 @@ struct AddTripView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
                                     ForEach(dirPredictions, id: \.direction) { pred in
-                                        Button(action: { direction = pred.direction }) {
+                                        Button(action: { viewModel.direction = pred.direction }) {
                                             Text(pred.direction)
                                                 .font(.system(size: 11, weight: .semibold))
                                                 .foregroundColor(.white)
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 8)
-                                                .background(direction == pred.direction ? accent : Color.white.opacity(0.1))
+                                                .background(viewModel.direction == pred.direction ? accent : Color.white.opacity(0.1))
                                                 .cornerRadius(8)
                                         }
                                     }
@@ -634,11 +514,11 @@ struct AddTripView: View {
                 }
 
                 // Advanced Options Toggle
-                Button(action: { withAnimation { showingAdvancedOptions.toggle() } }) {
+                Button(action: { withAnimation { viewModel.showingAdvancedOptions.toggle() } }) {
                     HStack {
-                        Text(showingAdvancedOptions ? "Hide Details" : "Add Agency")
+                        Text(viewModel.showingAdvancedOptions ? "Hide Details" : "Add Agency")
                             .font(.system(size: 11, weight: .semibold))
-                        Image(systemName: showingAdvancedOptions ? "chevron.up" : "chevron.down")
+                        Image(systemName: viewModel.showingAdvancedOptions ? "chevron.up" : "chevron.down")
                             .font(.system(size: 9))
                     }
                     .foregroundColor(.white.opacity(0.35))
@@ -646,7 +526,7 @@ struct AddTripView: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                if showingAdvancedOptions {
+                if viewModel.showingAdvancedOptions {
                     VStack(spacing: 16) {
                         // Agency picker
                         VStack(alignment: .leading, spacing: 8) {
@@ -659,17 +539,17 @@ struct AddTripView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
                                     ForEach(agencies, id: \.self) { ag in
-                                        Button(action: { agency = ag }) {
+                                        Button(action: { viewModel.agency = ag }) {
                                             Text(ag)
                                                 .font(.system(size: 11, weight: .semibold))
                                                 .padding(.horizontal, 12)
                                                 .padding(.vertical, 7)
-                                                .background(agency == ag ? accent : Color.white.opacity(0.07))
-                                                .foregroundColor(agency == ag ? .white : Color.white.opacity(0.5))
+                                                .background(viewModel.agency == ag ? accent : Color.white.opacity(0.07))
+                                                .foregroundColor(viewModel.agency == ag ? .white : Color.white.opacity(0.5))
                                                 .cornerRadius(20)
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 20)
-                                                        .stroke(agency == ag ? Color.clear : Color.white.opacity(0.1), lineWidth: 1)
+                                                        .stroke(viewModel.agency == ag ? Color.clear : Color.white.opacity(0.1), lineWidth: 1)
                                                 )
                                         }
                                     }
@@ -686,7 +566,7 @@ struct AddTripView: View {
             Button(action: submitTrip) {
                 HStack {
                     Spacer()
-                    if isLoading {
+                    if viewModel.isLoading {
                         ProgressView().tint(.white)
                     } else {
                         Image(systemName: "tram.fill")
@@ -699,21 +579,21 @@ struct AddTripView: View {
                 }
                 .padding(.vertical, 16)
                 .background(
-                    routeText.isEmpty
+                    viewModel.routeText.isEmpty
                         ? AnyShapeStyle(Color.white.opacity(0.06))
                         : AnyShapeStyle(LinearGradient(colors: [accent, .brandBlue], startPoint: .leading, endPoint: .trailing))
                 )
-                .foregroundColor(routeText.isEmpty ? Color.white.opacity(0.25) : .white)
+                .foregroundColor(viewModel.routeText.isEmpty ? Color.white.opacity(0.25) : .white)
                 .cornerRadius(14)
-                .shadow(color: routeText.isEmpty ? .clear : Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                .shadow(color: viewModel.routeText.isEmpty ? .clear : Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
             }
-            .disabled(isLoading || routeText.trimmingCharacters(in: .whitespaces).isEmpty)
+            .disabled(viewModel.isLoading || viewModel.routeText.trimmingCharacters(in: .whitespaces).isEmpty)
             .padding(.horizontal, 20)
             .padding(.top, 8)
-            .animation(.easeInOut(duration: 0.2), value: routeText.isEmpty)
+            .animation(.easeInOut(duration: 0.2), value: viewModel.routeText.isEmpty)
 
             // Back button
-            Button(action: { withAnimation { step = .atStop } }) {
+            Button(action: { withAnimation { viewModel.step = .atStop } }) {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 11))
@@ -746,13 +626,13 @@ struct AddTripView: View {
                 .foregroundColor(active ? .orange : Color.white.opacity(0.3))
                 .kerning(0.8)
         }
-        .animation(.easeInOut(duration: 0.3), value: step)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.step)
     }
 
     // MARK: - Actions
 
     private func locateUser() {
-        isLocating = true
+        viewModel.isLocating = true
         locationManager.requestPermission()
         locationManager.startUpdating()
 
@@ -763,12 +643,12 @@ struct AddTripView: View {
                 if locationManager.isAccuracySufficient { break }
                 try? await Task.sleep(nanoseconds: 250_000_000) // 0.25s
             }
-            await MainActor.run { isLocating = false }
+            await MainActor.run { viewModel.isLocating = false }
         }
     }
 
     private func startTripAtStop() {
-        let stop = stopText.trimmingCharacters(in: .whitespaces)
+        let stop = viewModel.stopText.trimmingCharacters(in: .whitespaces)
         guard !stop.isEmpty else { return }
         
         guard let userId = authManager.currentUser?.uid else {
@@ -776,7 +656,7 @@ struct AddTripView: View {
             return
         }
 
-        isLoading = true
+        viewModel.isLoading = true
 
         let location = locationManager.lastLocation
         let useLocation = locationManager.isAccuracySufficient
@@ -784,7 +664,7 @@ struct AddTripView: View {
         let newTrip = TripRecord(
             route: "",
             direction: "",
-            agency: agency,
+            agency: viewModel.agency,
             startTime: Date(),
             startStopName: stop,
             startLatitude: useLocation ? location?.coordinate.latitude : nil,
@@ -799,16 +679,16 @@ struct AddTripView: View {
         do {
             try modelContext.save()
             locationManager.startPathTracking()
-            isLoading = false
+            viewModel.isLoading = false
             dismiss()
         } catch {
             print("Failed to save local trip: \(error.localizedDescription)")
-            isLoading = false
+            viewModel.isLoading = false
         }
     }
 
     private func submitTrip() {
-        let route = routeText.trimmingCharacters(in: .whitespaces)
+        let route = viewModel.routeText.trimmingCharacters(in: .whitespaces)
         guard !route.isEmpty else { return }
         
         guard let userId = authManager.currentUser?.uid else {
@@ -816,17 +696,17 @@ struct AddTripView: View {
             return
         }
 
-        isLoading = true
+        viewModel.isLoading = true
 
-        let stop = stopText.trimmingCharacters(in: .whitespaces)
+        let stop = viewModel.stopText.trimmingCharacters(in: .whitespaces)
         
         let location = locationManager.lastLocation
         let useLocation = locationManager.isAccuracySufficient
         
         let newTrip = TripRecord(
             route: route,
-            direction: direction,
-            agency: agency,
+            direction: viewModel.direction,
+            agency: viewModel.agency,
             startTime: Date(),
             startStopName: stop.isEmpty ? nil : stop,
             startLatitude: useLocation ? location?.coordinate.latitude : nil,
@@ -841,28 +721,11 @@ struct AddTripView: View {
         do {
             try modelContext.save()
             locationManager.startPathTracking()
-            isLoading = false
+            viewModel.isLoading = false
             dismiss()
         } catch {
             print("Failed to save local trip: \(error.localizedDescription)")
-            isLoading = false
+            viewModel.isLoading = false
         }
     }
-}
-
-// MARK: - Support Types
-
-struct NearbyHub: Identifiable {
-    let id: String
-    let name: String
-    let isVerified: Bool
-    let distance: Double
-    let stops: [Stop]
-}
-
-struct StopSuggestion: Identifiable {
-    let id = UUID()
-    let name: String
-    let isFromHistory: Bool
-    let isVerified: Bool
 }

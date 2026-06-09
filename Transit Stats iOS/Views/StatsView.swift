@@ -8,135 +8,64 @@ struct StatsView: View {
     @Query(sort: \TripRecord.startTime, order: .reverse) private var allTrips: [TripRecord]
     @Query private var profiles: [UserProfile]
     @EnvironmentObject private var appEnv: AppEnvironment
-    @State private var selectedYear: Int? = nil
-    @State private var profileImage: UIImage? = nil
-    @State private var pickerItem: PhotosPickerItem? = nil
+    @StateObject private var viewModel = StatsViewModel()
     
-    // Panel State
-    private let snapHeights: [CGFloat] = [140, 480, 800]
-    @State private var panelHeight: CGFloat = 480
-    @State private var dragOffset: CGFloat = 0
-    private var effectivePanelHeight: CGFloat { max(snapHeights[0], panelHeight + dragOffset) }
-    
-    // Map State
-    @State private var cameraPosition: MapCameraPosition = .automatic
-
     private var profile: UserProfile? { profiles.first }
     private var accent: Color { appEnv.accent }
 
     private var availableYears: [Int] {
-        let calendar = Calendar.current
-        return Array(Set(allTrips.map { calendar.component(.year, from: $0.startTime) }))
-            .sorted().reversed()
+        viewModel.getAvailableYears(allTrips: allTrips)
     }
 
     private var trips: [TripRecord] {
-        guard let year = selectedYear else { return allTrips }
-        let calendar = Calendar.current
-        return allTrips.filter { calendar.component(.year, from: $0.startTime) == year }
+        viewModel.getFilteredTrips(allTrips: allTrips)
     }
 
     private var completedTrips: [TripRecord] { trips.filter { $0.endTime != nil } }
 
     private var totalMinutes: Int {
-        completedTrips.reduce(0) { $0 + ($1.durationMinutes ?? 0) }
+        viewModel.calculateTotalMinutes(completedTrips: completedTrips)
     }
 
     private var uniqueRoutes: Int {
-        Set(trips.map { $0.route }.filter { !$0.isEmpty }).count
+        viewModel.calculateUniqueRoutes(trips: trips)
     }
 
     private var uniqueDays: Int {
-        let calendar = Calendar.current
-        return Set(trips.map { calendar.startOfDay(for: $0.startTime) }).count
+        viewModel.calculateUniqueDays(trips: trips)
     }
 
     private var uniqueStops: Int {
-        let starts = trips.compactMap { $0.startStopName ?? $0.startStopCode }
-        let ends = trips.compactMap { $0.endStopName ?? $0.endStopCode }
-        return Set(starts + ends).count
+        viewModel.calculateUniqueStops(trips: trips)
     }
 
     private var topRoutes: [(route: String, count: Int)] {
-        let groups = Dictionary(grouping: trips.filter { !$0.route.isEmpty }) { $0.route }
-        return groups.map { (route: $0.key, count: $0.value.count) }
-            .sorted { $0.count > $1.count }
+        viewModel.calculateTopRoutes(trips: trips)
     }
 
     private var currentStreak: Int {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let tripDaySet = Set(allTrips.map { calendar.startOfDay(for: $0.startTime) })
-        var checkDate = tripDaySet.contains(today) ? today : (calendar.date(byAdding: .day, value: -1, to: today) ?? today)
-        var streak = 0
-        while tripDaySet.contains(checkDate) {
-            streak += 1
-            checkDate = calendar.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
-        }
-        return streak
+        viewModel.calculateCurrentStreak(allTrips: allTrips)
     }
 
     private var longestStreak: Int {
-        let days = Set(allTrips.filter { $0.endTime != nil }.map { Calendar.current.startOfDay(for: $0.startTime) }).sorted()
-        guard !days.isEmpty else { return 0 }
-        let calendar = Calendar.current
-        var longest = 1, current = 1
-        for i in 1..<days.count {
-            let diff = calendar.dateComponents([.day], from: days[i-1], to: days[i]).day ?? 0
-            if diff == 1 {
-                current += 1
-                if current > longest { longest = current }
-            } else { current = 1 }
-        }
-        return longest
+        viewModel.calculateLongestStreak(allTrips: allTrips)
     }
 
     private var agencyStats: [(agency: String, count: Int)] {
-        let groups = Dictionary(grouping: trips.filter { !$0.agency.isEmpty }) { $0.agency }
-        return groups.map { (agency: $0.key, count: $0.value.count) }
-            .sorted { $0.count > $1.count }
+        viewModel.calculateAgencyStats(trips: trips)
     }
 
     private var joinDate: String {
-        let date = profile?.joinedAt ?? allTrips.last?.startTime ?? Date()
-        return date.formatted(.dateTime.month().year()).uppercased()
+        viewModel.formatJoinDate(profile: profile, allTrips: allTrips)
     }
 
     private var weekdayStats: [(day: String, count: Int)] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "E"
-        let groups = Dictionary(grouping: completedTrips) { formatter.string(from: $0.startTime) }
-        return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map { day in
-            (day: day, count: groups[day]?.count ?? 0)
-        }
-    }
-
-    private func formattedTime(_ minutes: Int) -> String {
-        let h = minutes / 60
-        let m = minutes % 60
-        if h == 0 { return "\(m)m" }
-        if m == 0 { return "\(h)h" }
-        return "\(h)h \(m)m"
-    }
-
-    private func routeColor(for route: String) -> Color {
-        switch route.uppercased() {
-        case "1":  return Color(hex: "F5A623")
-        case "2":  return Color(hex: "2E8B57")
-        case "3":  return Color(hex: "4169E1")
-        case "4":  return Color(hex: "8B008B")
-        default:
-            if let num = Int(route.prefix(while: { $0.isNumber })), num >= 500 && num < 600 {
-                return Color(hex: "A0001A")
-            }
-            let palette = ["1B5E9B","7B3F8C","1A6B5A","7A3B1E","2C4F8C","8B3A3A"]
-            return Color(hex: palette[abs(route.hashValue) % palette.count])
-        }
+        viewModel.calculateWeekdayStats(completedTrips: completedTrips)
     }
 
     var body: some View {
         ZStack {
-            Map(position: $cameraPosition) {
+            Map(position: $viewModel.cameraPosition) {
                 ForEach(allTrips.filter { $0.pathData != nil }) { trip in
                     MapPolyline(coordinates: trip.path.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) })
                         .stroke(accent.opacity(0.4), lineWidth: 2)
@@ -148,7 +77,7 @@ struct StatsView: View {
             .mapControls { }
             .ignoresSafeArea()
 
-            Color.black.opacity(min(0.4, Double(effectivePanelHeight - 140) / 1000.0))
+            Color.black.opacity(min(0.4, Double(viewModel.effectivePanelHeight - 140) / 1000.0))
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
 
@@ -158,15 +87,9 @@ struct StatsView: View {
             }
             .ignoresSafeArea(edges: .bottom)
         }
-        .onAppear { profileImage = ProfileImageManager.shared.load() }
-        .onChange(of: pickerItem) { _, item in
-            Task {
-                if let data = try? await item?.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    ProfileImageManager.shared.save(image)
-                    profileImage = image
-                }
-            }
+        .onAppear { viewModel.loadProfileImage() }
+        .onChange(of: viewModel.pickerItem) { _, _ in
+            viewModel.handlePickerChange()
         }
     }
 
@@ -175,7 +98,7 @@ struct StatsView: View {
             panelHeader
             panelScrollContent
         }
-        .frame(height: effectivePanelHeight)
+        .frame(height: viewModel.effectivePanelHeight)
         .background(Color.appBackground)
         .background(.ultraThinMaterial)
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
@@ -198,9 +121,9 @@ struct StatsView: View {
                     .font(.system(size: 34, weight: .bold))
                     .foregroundColor(.white)
                 Spacer()
-                PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+                PhotosPicker(selection: $viewModel.pickerItem, matching: .images, photoLibrary: .shared()) {
                     ZStack {
-                        if let img = profileImage {
+                        if let img = viewModel.profileImage {
                             Image(uiImage: img)
                                 .resizable()
                                 .scaledToFill()
@@ -236,13 +159,13 @@ struct StatsView: View {
         .background(.ultraThinMaterial)
         .gesture(
             DragGesture()
-                .onChanged { value in dragOffset = -value.translation.height }
+                .onChanged { value in viewModel.dragOffset = -value.translation.height }
                 .onEnded { _ in
-                    let currentHeight = panelHeight + dragOffset
-                    let nearest = snapHeights.min(by: { abs($0 - currentHeight) < abs($1 - currentHeight) }) ?? 480
+                    let currentHeight = viewModel.panelHeight + viewModel.dragOffset
+                    let nearest = viewModel.snapHeights.min(by: { abs($0 - currentHeight) < abs($1 - currentHeight) }) ?? 480
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                        panelHeight = nearest
-                        dragOffset = 0
+                        viewModel.panelHeight = nearest
+                        viewModel.dragOffset = 0
                     }
                 }
         )
@@ -339,8 +262,8 @@ struct StatsView: View {
     // MARK: - Subviews
 
     private func yearPill(label: String, year: Int?) -> some View {
-        let selected = selectedYear == year
-        return Button(action: { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { selectedYear = year } }) {
+        let selected = viewModel.selectedYear == year
+        return Button(action: { withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { viewModel.selectedYear = year } }) {
             Text(label)
                 .font(.system(size: 13, weight: .bold))
                 .foregroundColor(selected ? .white : .white.opacity(0.35))
@@ -355,7 +278,7 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 20) {
             // Hero Title
             VStack(alignment: .leading, spacing: 4) {
-                Text((selectedYear.map { "\($0) " } ?? "ALL-TIME ").uppercased() + "TRANSIT PASSPORT")
+                Text((viewModel.selectedYear.map { "\($0) " } ?? "ALL-TIME ").uppercased() + "TRANSIT PASSPORT")
                     .font(.system(size: 14, weight: .black))
                     .foregroundColor(accent)
                     .kerning(1)
@@ -391,7 +314,7 @@ struct StatsView: View {
                         .font(.system(size: 9, weight: .black))
                         .foregroundColor(.white.opacity(0.4))
                         .kerning(1)
-                    Text(formattedTime(totalMinutes))
+                    Text(viewModel.formattedTime(totalMinutes))
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                     Text("In transit")
@@ -464,7 +387,7 @@ struct StatsView: View {
     }
 
     private func routeCard(_ stat: (route: String, count: Int)) -> some View {
-        let color = routeColor(for: stat.route)
+        let color = viewModel.routeColor(for: stat.route)
         return HStack(spacing: 0) {
             Text(stat.route)
                 .font(.system(size: stat.route.count > 4 ? 20 : 26, weight: .black, design: .rounded))

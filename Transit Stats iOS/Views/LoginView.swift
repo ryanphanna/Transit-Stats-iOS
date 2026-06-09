@@ -12,7 +12,7 @@ struct LoginView: View {
     @State private var showingLogin = false
     @State private var resendCooldown: Int = 0
 
-    @StateObject private var api = TransitStatsAPI.shared
+    @StateObject private var authService = AuthService.shared
 
     var body: some View {
         ZStack {
@@ -289,7 +289,7 @@ struct LoginView: View {
 
         Task {
             do {
-                try await api.requestOtp(phoneNumber: phoneNumber)
+                try await authService.requestOtp(phoneNumber: phoneNumber)
                 await MainActor.run {
                     isLoading = false
                     isEnteringCode = true
@@ -320,11 +320,7 @@ struct LoginView: View {
         
         Task {
             do {
-                let customToken = try await api.verifyOtp(phoneNumber: phoneNumber, code: otpCode)
-                
-                // Sign in to Firebase Auth using Custom Token
-                try await Auth.auth().signIn(withCustomToken: customToken)
-                
+                try await authService.verifyOtp(phoneNumber: phoneNumber, code: otpCode)
                 await MainActor.run {
                     isLoading = false
                 }

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Architectural Overhaul (MVVM)**: Implemented Model-View-ViewModel architecture across all core views (`HomeView`, `AddTripView`, `StatsView`). Extracted massive amounts of business logic, state management, and analytical calculations into dedicated ViewModels, reducing view file sizes by ~30-50%.
+- **Decomposed TransitStatsAPI**: Broke down the "God Class" `TransitStatsAPI` into specialized, decoupled services:
+    - `AuthService`: Dedicated to OTP flows and Firebase session management.
+    - `TripService`: Specialized Firestore CRUD operations and backend command processing.
+    - `SyncManager`: Isolated real-time synchronization and SwiftData reconciliation logic.
+- **Project Directory Restructuring**: Reorganized the entire codebase into a logical folder hierarchy (`Models`, `Views`, `ViewModels`, `Services`, `Utilities`, `Resources`) for improved maintainability and discovery.
+
 ### Fixed
 - **AddTripView: GPS start location missed on slow fix**: `locateUser()` previously waited a blind 1.5s before proceeding. Now polls every 250ms for an accurate fix, up to 5 seconds, so trips started immediately after tapping Locate still capture a valid start coordinate.
 

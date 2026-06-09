@@ -25,90 +25,24 @@ struct HomeView: View {
     @Query private var hubsLibrary: [Hub]
     @Query private var stopsLibrary: [Stop]
     
+    @StateObject private var viewModel = HomeViewModel()
     @StateObject private var api = TransitStatsAPI.shared
     @StateObject private var locationManager = LocationManager.shared
     @EnvironmentObject private var appEnv: AppEnvironment
     private var accent: Color { appEnv.accent }
     
-    @State private var endStopText = ""
-    @State private var showAlert = false
-    @State private var alertMessage = ""
-    @State private var isShowingAddTripSheet = false
-    @State private var isShowingSettingsSheet = false
-    @State private var activeRouteText = ""
-
-    // Panel State
-    private let snapHeights: [CGFloat] = [140, 380, 620]
-    @State private var panelHeight: CGFloat = 380
-    @State private var dragOffset: CGFloat = 0
-    private var effectivePanelHeight: CGFloat { max(snapHeights[0], panelHeight + dragOffset) }
-
-    // Map State
-    @State private var cameraPosition: MapCameraPosition = .automatic
-    @State private var pendingLocationZoom = false
-    
     private var mapMarkers: [TripMarker] {
-        var hubs: [String: (lat: Double, lon: Double, count: Int, route: String)] = [:]
-
-        for trip in completedTrips {
-            guard let name = trip.startStopName ?? trip.startStopCode else { continue }
-
-            // Prefer trip GPS; fall back to stop library coordinates
-            let lat: Double
-            let lon: Double
-            if let tLat = trip.startLatitude, let tLon = trip.startLongitude,
-               trip.startAccuracy.map({ $0 <= 65 }) ?? true {
-                lat = tLat; lon = tLon
-            } else if let stop = stopsLibrary.first(where: {
-                $0.code == trip.startStopCode || $0.name == trip.startStopName
-            }) {
-                lat = stop.latitude; lon = stop.longitude
-            } else {
-                continue
-            }
-
-            if var existing = hubs[name] {
-                existing.count += 1
-                hubs[name] = existing
-            } else {
-                hubs[name] = (lat: lat, lon: lon, count: 1, route: trip.route)
-            }
-        }
-        
-        var markers: [TripMarker] = hubs.map { name, data in
-            // Try to find pretty name from hubsLibrary
-            let hubName = hubsLibrary.first(where: { $0.id == name })?.name ?? name
-            
-            return TripMarker(
-                id: name,
-                coordinate: CLLocationCoordinate2D(latitude: data.lat, longitude: data.lon),
-                count: data.count,
-                label: hubName,
-                route: data.route
-            )
-        }
-        
-        // Add active trip if exists
-        if let trip = activeTrip, let lat = trip.startLatitude, let lon = trip.startLongitude {
-            let name = trip.startStopName ?? trip.startStopCode ?? "Active"
-            markers.append(TripMarker(
-                id: "active",
-                coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                count: 1,
-                label: name,
-                route: trip.route,
-                isActive: true
-            ))
-        }
-        
-        return markers
+        viewModel.generateMapMarkers(
+            completedTrips: completedTrips,
+            stopsLibrary: stopsLibrary,
+            hubsLibrary: hubsLibrary,
+            activeTrip: activeTrip
+        )
     }
     
     // Live timer trigger
-    @State private var timeElapsed = ""
     let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
 
-    
     var activeTrip: TripRecord? {
         activeTrips.first
     }
@@ -116,7 +50,7 @@ struct HomeView: View {
     var body: some View {
         ZStack {
             // Full Screen Interactive Map Background
-            Map(position: $cameraPosition) {
+            Map(position: $viewModel.cameraPosition) {
                 ForEach(mapMarkers) { marker in
                     Annotation("", coordinate: marker.coordinate) {
                         HubView(marker: marker)
@@ -127,14 +61,17 @@ struct HomeView: View {
             .preferredColorScheme(.dark)
             .mapStyle(.standard)
             .mapControls { }
-            .onAppear { updateCameraPosition() }
+            .onAppear { 
+                viewModel.modelContext = modelContext
+                viewModel.updateCameraPosition(mapMarkers: mapMarkers) 
+            }
             .ignoresSafeArea()
 
             // Settings button — top right
             VStack {
                 HStack {
                     Spacer()
-                    Button(action: { isShowingSettingsSheet = true }) {
+                    Button(action: { viewModel.isShowingSettingsSheet = true }) {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
@@ -165,13 +102,13 @@ struct HomeView: View {
                             locationManager.startUpdating()
                             if let coord = locationManager.lastLocation?.coordinate {
                                 withAnimation(.spring()) {
-                                    cameraPosition = .region(MKCoordinateRegion(
+                                    viewModel.cameraPosition = .region(MKCoordinateRegion(
                                         center: coord,
                                         span: MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
                                     ))
                                 }
                             } else {
-                                pendingLocationZoom = true
+                                viewModel.pendingLocationZoom = true
                             }
                         }) {
                             Image(systemName: "location.fill")
@@ -186,8 +123,8 @@ struct HomeView: View {
                     }
                     .padding(.trailing, 16)
                 }
-                .padding(.bottom, effectivePanelHeight + 16)
-                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: effectivePanelHeight)
+                .padding(.bottom, viewModel.effectivePanelHeight + 16)
+                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: viewModel.effectivePanelHeight)
             }
         // Bottom panel — ZStack overlay so tab bar stays visible
         VStack(spacing: 0) {
@@ -205,12 +142,12 @@ struct HomeView: View {
                     .contentShape(Rectangle())
                     .gesture(
                         DragGesture()
-                            .onChanged { value in dragOffset = -value.translation.height }
+                            .onChanged { value in viewModel.dragOffset = -value.translation.height }
                             .onEnded { _ in
-                                let nearest = snapHeights.min(by: { abs($0 - (panelHeight + dragOffset)) < abs($1 - (panelHeight + dragOffset)) }) ?? 270
+                                let nearest = viewModel.snapHeights.min(by: { abs($0 - (viewModel.panelHeight + viewModel.dragOffset)) < abs($1 - (viewModel.panelHeight + viewModel.dragOffset)) }) ?? 270
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                    panelHeight = nearest
-                                    dragOffset = 0
+                                    viewModel.panelHeight = nearest
+                                    viewModel.dragOffset = 0
                                 }
                             }
                     )
@@ -219,8 +156,8 @@ struct HomeView: View {
                     VStack(spacing: 20) {
                         if let trip = activeTrip {
                             activeTripCard(trip)
-                                .onAppear { updateTimer(for: trip) }
-                                .onReceive(timer) { _ in updateTimer(for: trip) }
+                                .onAppear { viewModel.updateTimer(for: trip) }
+                                .onReceive(timer) { _ in viewModel.updateTimer(for: trip) }
                         } else {
                             readyStateCard
                         }
@@ -233,7 +170,7 @@ struct HomeView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .frame(height: effectivePanelHeight)
+            .frame(height: viewModel.effectivePanelHeight)
             .background(Color.appBackground)
             .background(.ultraThinMaterial)
             .clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28))
@@ -253,21 +190,14 @@ struct HomeView: View {
             locationManager.stopUpdating()
         }
         .onChange(of: locationManager.lastLocation) { _, location in
-            guard pendingLocationZoom, let coord = location?.coordinate else { return }
-            pendingLocationZoom = false
-            withAnimation(.spring()) {
-                cameraPosition = .region(MKCoordinateRegion(
-                    center: coord,
-                    span: MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
-                ))
-            }
+            viewModel.handleLocationChange(location)
         }
-        .sheet(isPresented: $isShowingAddTripSheet) {
+        .sheet(isPresented: $viewModel.isShowingAddTripSheet) {
             AddTripView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.hidden)
         }
-        .sheet(isPresented: $isShowingSettingsSheet) {
+        .sheet(isPresented: $viewModel.isShowingSettingsSheet) {
             SettingsView()
                 .presentationDetents([.medium, .large])
         }
@@ -328,14 +258,14 @@ struct HomeView: View {
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundColor(.white.opacity(0.3))
                                 .kerning(1)
-                            Text(timeElapsed)
+                            Text(viewModel.timeElapsed)
                                 .font(.system(size: 16, weight: .bold, design: .monospaced))
                                 .foregroundColor(accent)
                         }
                     }
                     
                     HStack(spacing: 10) {
-                        TextField("e.g. 506, Line 1, GO Lakeshore", text: $activeRouteText)
+                        TextField("e.g. 506, Line 1, GO Lakeshore", text: $viewModel.activeRouteText)
                             .font(.system(size: 14, weight: .medium))
                             .padding(.vertical, 12)
                             .padding(.horizontal, 16)
@@ -349,7 +279,7 @@ struct HomeView: View {
                             .autocorrectionDisabled()
                         
                         Button(action: {
-                            let enteredRoute = activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let enteredRoute = viewModel.activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines)
                             if !enteredRoute.isEmpty {
                                 withAnimation {
                                     trip.route = enteredRoute
@@ -363,7 +293,7 @@ struct HomeView: View {
                                         trip.agency = match.agency
                                     }
                                     try? modelContext.save()
-                                    activeRouteText = ""
+                                    viewModel.activeRouteText = ""
                                 }
                             }
                         }) {
@@ -371,11 +301,11 @@ struct HomeView: View {
                                 .font(.system(size: 13, weight: .bold))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
-                                .background(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.06) : accent)
-                                .foregroundColor(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.3) : .white)
+                                .background(viewModel.activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.06) : accent)
+                                .foregroundColor(viewModel.activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.white.opacity(0.3) : .white)
                                 .cornerRadius(12)
                         }
-                        .disabled(activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(viewModel.activeRouteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                     
                     let routeSuggestions = PredictionEngine.predict(history: completedTrips, stopName: trip.startStopName).filter { !$0.route.isEmpty }
@@ -438,7 +368,7 @@ struct HomeView: View {
                             .font(.system(size: 8, weight: .bold))
                             .foregroundColor(.white.opacity(0.3))
                             .kerning(1)
-                        Text(timeElapsed)
+                        Text(viewModel.timeElapsed)
                             .font(.system(size: 16, weight: .bold, design: .monospaced))
                             .foregroundColor(accent)
                     }
@@ -483,9 +413,9 @@ struct HomeView: View {
                     Text("Destination")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.white.opacity(0.3))
-                    Text(endStopText.isEmpty ? "..." : endStopText)
+                    Text(viewModel.endStopText.isEmpty ? "..." : viewModel.endStopText)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(endStopText.isEmpty ? .white.opacity(0.2) : .white)
+                        .foregroundColor(viewModel.endStopText.isEmpty ? .white.opacity(0.2) : .white)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -496,7 +426,7 @@ struct HomeView: View {
             
             // End trip input
             VStack(spacing: 12) {
-                TextField("Enter exit stop name or code", text: $endStopText)
+                TextField("Enter exit stop name or code", text: $viewModel.endStopText)
                     .font(.system(size: 14, weight: .medium))
                     .padding(.vertical, 12)
                     .padding(.horizontal, 16)
@@ -514,8 +444,8 @@ struct HomeView: View {
                         HStack(spacing: 8) {
                             ForEach(exitSuggestions, id: \.self) { suggestion in
                                 Button(action: {
-                                    endStopText = suggestion
-                                    endTrip()
+                                    viewModel.endStopText = suggestion
+                                    viewModel.endTrip(activeTrip: trip)
                                 }) {
                                     HStack(spacing: 4) {
                                         Image(systemName: "mappin.and.ellipse")
@@ -541,7 +471,7 @@ struct HomeView: View {
                 }
                 
                 HStack(spacing: 12) {
-                    Button(action: endTrip) {
+                    Button(action: { viewModel.endTrip(activeTrip: trip) }) {
                         HStack {
                             Spacer()
                             if api.isSendingCommand {
@@ -562,8 +492,8 @@ struct HomeView: View {
                     .disabled(api.isSendingCommand || trip.route.isEmpty)
                     
                     Menu {
-                        Button("Forgot to End", role: .none, action: forgotTrip)
-                        Button("Discard Trip", role: .destructive, action: discardTrip)
+                        Button("Forgot to End", role: .none, action: { viewModel.forgotTrip(activeTrip: trip) })
+                        Button("Discard Trip", role: .destructive, action: { viewModel.discardTrip(activeTrip: trip) })
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 14, weight: .bold))
@@ -605,7 +535,7 @@ struct HomeView: View {
 
             // Start button + shortcuts
             VStack(spacing: 16) {
-                Button(action: { isShowingAddTripSheet = true }) {
+                Button(action: { viewModel.isShowingAddTripSheet = true }) {
                     HStack(spacing: 8) {
                         Image(systemName: "tram.fill")
                             .font(.system(size: 14))
@@ -622,7 +552,7 @@ struct HomeView: View {
                 }
 
                 // Quick-start shortcuts
-                let shortcuts = getShortcutOptions()
+                let shortcuts = viewModel.getShortcutOptions(completedTrips: completedTrips)
                 if !shortcuts.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("QUICK START")
@@ -633,7 +563,7 @@ struct HomeView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 ForEach(shortcuts, id: \.command) { s in
-                                    Button(action: { startShortcut(s) }) {
+                                    Button(action: { viewModel.startShortcut(s, userId: AuthManager.shared.currentUser?.uid) }) {
                                         HStack(spacing: 8) {
                                             Text(s.route)
                                                 .font(.system(size: 15, weight: .black, design: .rounded))
@@ -756,226 +686,8 @@ struct HomeView: View {
         }
         .transition(.opacity.combined(with: .scale))
     }
-    
-    private var shortcutsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("RECENT SHORTCUTS")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.gray)
-                .kerning(1)
-            
-            // Extract top unique route/stop combinations from completed trips
-            let shortcuts = getShortcutOptions()
-            
-            if shortcuts.isEmpty {
-                Text("Your regular routes will appear here once you log a few trips.")
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray)
-                    .padding(.top, 2)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(shortcuts, id: \.command) { shortcut in
-                            Button(action: { startShortcut(shortcut) }) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(shortcut.route)
-                                        .font(.system(size: 10, weight: .black))
-                                        .foregroundColor(accent)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 3)
-                                        .background(accent.opacity(0.15))
-                                        .cornerRadius(4)
-
-                                    Text(shortcut.stopName)
-                                        .font(.system(size: 11, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .lineLimit(1)
-
-                                    if !shortcut.direction.isEmpty {
-                                        Text(shortcut.direction.uppercased())
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .padding(12)
-                                .frame(width: 125, alignment: .leading)
-                                .background(Color.black.opacity(0.25))
-                                .cornerRadius(10)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Actions
-
-    private func updateTimer(for trip: TripRecord) {
-        let diff = Date().timeIntervalSince(trip.startTime)
-        let mins = Int(diff / 60)
-        if mins < 1 {
-            timeElapsed = "0 min"
-        } else {
-            timeElapsed = "\(mins) min"
-        }
-    }
-
-    private func startShortcut(_ shortcut: ShortcutOption) {
-        guard let userId = AuthManager.shared.currentUser?.uid else { return }
-
-        let location = locationManager.lastLocation
-        let useLocation = locationManager.isAccuracySufficient
-
-        let newTrip = TripRecord(
-            route: shortcut.route,
-            direction: shortcut.direction,
-            agency: "TTC", // Default for shortcuts for now, could be stored in ShortcutOption
-            startTime: Date(),
-            startStopName: shortcut.stopName,
-            startLatitude: useLocation ? location?.coordinate.latitude : nil,
-            startLongitude: useLocation ? location?.coordinate.longitude : nil,
-            startAccuracy: useLocation ? location?.horizontalAccuracy : nil,
-            userId: userId,
-            isSynced: false
-        )
-
-        modelContext.insert(newTrip)
-        try? modelContext.save()
-
-        // Start high-fidelity tracking
-        locationManager.startPathTracking()
-    }
-
-    private func endTrip() {
-        guard let trip = activeTrip else { return }
-
-        let stop = endStopText.trimmingCharacters(in: .whitespaces)
-        trip.endStopName = stop.isEmpty ? nil : stop
-        trip.endTime = Date()
-
-        if locationManager.isAccuracySufficient, let location = locationManager.lastLocation {
-            trip.endLatitude = location.coordinate.latitude
-            trip.endLongitude = location.coordinate.longitude
-            trip.endAccuracy = location.horizontalAccuracy
-        }
-
-        // Capture path data
-        trip.pathData = locationManager.stopPathTracking()
-
-        // Save locally first
-        try? modelContext.save()
-        
-        // Clear UI
-        let tripToSync = trip
-        endStopText = ""
-        
-        // Sync to Firestore
-        Task {
-            do {
-                try await api.uploadTrip(tripToSync)
-                try? modelContext.save() // Save the isSynced = true state
-            } catch {
-                print("Failed to sync completed trip: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    private func forgotTrip() {
-        guard let trip = activeTrip else { return }
-        
-        // Mark as 15 mins ago or just end now if unknown
-        trip.endTime = trip.startTime.addingTimeInterval(15 * 60)
-        trip.notes = (trip.notes ?? "") + " (Flagged as forgotten)"
-        
-        try? modelContext.save()
-        
-        let tripToSync = trip
-        Task {
-            try? await api.uploadTrip(tripToSync)
-            try? modelContext.save()
-        }
-    }
-    
-    private func discardTrip() {
-        guard let trip = activeTrip else { return }
-        modelContext.delete(trip)
-        try? modelContext.save()
-    }
-    
-    // Helper to extract top 4 unique shortcuts
-    private struct ShortcutOption {
-        let route: String
-        let stopName: String
-        let direction: String
-        let command: String
-    }
-    
-    private func getShortcutOptions() -> [ShortcutOption] {
-        // Use the new on-device PredictionEngine to rank history
-        let predictions = PredictionEngine.predict(history: completedTrips, stopName: nil)
-        
-        var options: [ShortcutOption] = []
-        var seen = Set<String>()
-        
-        for prediction in predictions {
-            // Find the most recent trip matching this route/direction to get the stop name
-            if let trip = completedTrips.first(where: { 
-                $0.route == prediction.route && $0.direction == prediction.direction 
-            }) {
-                guard let stopName = trip.startStopName ?? trip.startStopCode else { continue }
-                let key = "\(prediction.route)|\(stopName)|\(prediction.direction)"
-                
-                if !seen.contains(key) {
-                    seen.insert(key)
-                    let command = "\(prediction.route) \(stopName) \(prediction.direction)".trimmingCharacters(in: .whitespaces)
-                    options.append(ShortcutOption(
-                        route: prediction.route,
-                        stopName: stopName,
-                        direction: prediction.direction,
-                        command: command
-                    ))
-                }
-            }
-            
-            if options.count >= 4 { break }
-        }
-        
-        return options
-    }
-    
-    private func updateCameraPosition() {
-        // Prefer user's current location at street level
-        if let coord = locationManager.lastLocation?.coordinate {
-            cameraPosition = .region(MKCoordinateRegion(
-                center: coord,
-                span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)
-            ))
-            return
-        }
-        // Fall back: fit only the most recent 10 markers (not all history)
-        let recent = Array(mapMarkers.sorted { $0.count > $1.count }.prefix(10))
-        guard !recent.isEmpty else { return }
-        let coordinates = recent.map { $0.coordinate }
-        var minLat = 90.0, maxLat = -90.0, minLon = 180.0, maxLon = -180.0
-        for coord in coordinates {
-            minLat = min(minLat, coord.latitude); maxLat = max(maxLat, coord.latitude)
-            minLon = min(minLon, coord.longitude); maxLon = max(maxLon, coord.longitude)
-        }
-        let span = MKCoordinateSpan(
-            latitudeDelta: max((maxLat - minLat) * 1.5, 0.05),
-            longitudeDelta: max((maxLon - minLon) * 1.5, 0.05)
-        )
-        cameraPosition = .region(MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
-            span: span
-        ))
-    }
 }
+
 
 // MARK: - Map Support Types
 
