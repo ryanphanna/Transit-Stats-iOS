@@ -120,65 +120,32 @@ struct TripsHistoryView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {
-                            // Filter categories
-                            VStack(alignment: .leading, spacing: 0) {
+                            // Filter row — category view OR drill-down options
+                            ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
-                                    filterCategory(
-                                        "Time",
-                                        isFiltered: dateFilter != "all",
-                                        isExpanded: expandedFilter == "time"
-                                    ) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        expandedFilter = expandedFilter == "time" ? nil : "time"
-                                    }}
-                                    filterCategory(
-                                        "Source",
-                                        isFiltered: sourceFilter != "all",
-                                        isExpanded: expandedFilter == "source"
-                                    ) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        expandedFilter = expandedFilter == "source" ? nil : "source"
-                                    }}
-                                    if !availableAgencies.isEmpty {
-                                        filterCategory(
-                                            "Agency",
-                                            isFiltered: agencyFilter != nil,
-                                            isExpanded: expandedFilter == "agency"
-                                        ) { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                            expandedFilter = expandedFilter == "agency" ? nil : "agency"
-                                        }}
-                                    }
-                                }
-                                .padding(.horizontal, 16)
+                                    if let expanded = expandedFilter {
+                                        // Back button
+                                        Button(action: { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = nil } }) {
+                                            Image(systemName: "chevron.left")
+                                                .font(.system(size: 11, weight: .bold))
+                                                .foregroundColor(.white.opacity(0.6))
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 7)
+                                                .background(Color.white.opacity(0.08))
+                                                .clipShape(Capsule())
+                                        }
+                                        .buttonStyle(.plain)
 
-                                if expandedFilter == "time" {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
+                                        if expanded == "time" {
                                             filterChip("All time",   active: dateFilter == "all")   { dateFilter = "all";   withAnimation { expandedFilter = nil } }
                                             filterChip("This week",  active: dateFilter == "week")  { dateFilter = "week";  withAnimation { expandedFilter = nil } }
                                             filterChip("This month", active: dateFilter == "month") { dateFilter = "month"; withAnimation { expandedFilter = nil } }
                                             filterChip("This year",  active: dateFilter == "year")  { dateFilter = "year";  withAnimation { expandedFilter = nil } }
-                                        }
-                                        .padding(.horizontal, 16)
-                                    }
-                                    .padding(.top, 8)
-                                    .transition(.opacity.combined(with: .move(edge: .top)))
-                                }
-
-                                if expandedFilter == "source" {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
-                                            filterChip("All",  active: sourceFilter == "all") { sourceFilter = "all"; withAnimation { expandedFilter = nil } }
-                                            filterChip("App",  active: sourceFilter == "app") { sourceFilter = "app"; withAnimation { expandedFilter = nil } }
-                                            filterChip("SMS",  active: sourceFilter == "sms") { sourceFilter = "sms"; withAnimation { expandedFilter = nil } }
-                                        }
-                                        .padding(.horizontal, 16)
-                                    }
-                                    .padding(.top, 8)
-                                    .transition(.opacity.combined(with: .move(edge: .top)))
-                                }
-
-                                if expandedFilter == "agency" {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
+                                        } else if expanded == "source" {
+                                            filterChip("All", active: sourceFilter == "all") { sourceFilter = "all"; withAnimation { expandedFilter = nil } }
+                                            filterChip("App", active: sourceFilter == "app") { sourceFilter = "app"; withAnimation { expandedFilter = nil } }
+                                            filterChip("SMS", active: sourceFilter == "sms") { sourceFilter = "sms"; withAnimation { expandedFilter = nil } }
+                                        } else if expanded == "agency" {
                                             filterChip("All", active: agencyFilter == nil) { agencyFilter = nil; withAnimation { expandedFilter = nil } }
                                             ForEach(availableAgencies, id: \.self) { agency in
                                                 filterChip(agency, active: agencyFilter == agency) {
@@ -187,11 +154,17 @@ struct TripsHistoryView: View {
                                                 }
                                             }
                                         }
-                                        .padding(.horizontal, 16)
+                                    } else {
+                                        // Category pills
+                                        filterCategory("Time",   isFiltered: dateFilter != "all",   isExpanded: false) { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = "time" } }
+                                        filterCategory("Source", isFiltered: sourceFilter != "all", isExpanded: false) { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = "source" } }
+                                        if !availableAgencies.isEmpty {
+                                            filterCategory("Agency", isFiltered: agencyFilter != nil, isExpanded: false) { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = "agency" } }
+                                        }
                                     }
-                                    .padding(.top, 8)
-                                    .transition(.opacity.combined(with: .move(edge: .top)))
                                 }
+                                .padding(.horizontal, 16)
+                                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: expandedFilter)
                             }
                             .padding(.vertical, 4)
 

@@ -29,165 +29,143 @@ struct TripDetailView: View {
                 .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 16) {
 
-                        // Hero: Route & Agency
-                        VStack(spacing: 16) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 28)
-                                    .fill(accent.opacity(0.15))
-                                    .frame(width: 100, height: 100)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 28)
-                                            .stroke(accent.opacity(0.3), lineWidth: 1)
-                                    )
-
-                                if trip.route.isEmpty {
-                                    Image(systemName: "tram.fill")
-                                        .font(.system(size: 38, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.35))
-                                } else {
-                                    Text(trip.route)
-                                        .font(.system(size: 44, weight: .black, design: .rounded))
-                                        .foregroundColor(.white)
-                                        .minimumScaleFactor(0.5)
-                                        .lineLimit(1)
-                                        .padding(10)
-                                }
+                        // Header: Route + Agency
+                        HStack(spacing: 14) {
+                            if !trip.route.isEmpty {
+                                Text(trip.route)
+                                    .font(.system(size: 30, weight: .black, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .minimumScaleFactor(0.5)
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(accent.opacity(0.15))
+                                    .cornerRadius(16)
+                                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(accent.opacity(0.25), lineWidth: 1))
+                            } else {
+                                Image(systemName: "tram.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(accent.opacity(0.5))
+                                    .padding(12)
+                                    .background(accent.opacity(0.1))
+                                    .cornerRadius(12)
                             }
-                            .shadow(color: accent.opacity(0.2), radius: 20, x: 0, y: 10)
-
-                            VStack(spacing: 4) {
+                            VStack(alignment: .leading, spacing: 3) {
                                 if !trip.agency.isEmpty {
                                     Text(trip.agency.uppercased())
-                                        .font(.system(size: 13, weight: .black))
-                                        .kerning(2)
+                                        .font(.system(size: 14, weight: .black))
+                                        .kerning(1.5)
                                         .foregroundColor(accent)
                                 }
                                 if !trip.direction.isEmpty {
                                     Text(trip.direction)
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.9))
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.55))
                                 }
                             }
+                            Spacer()
                         }
-                        .padding(.top, 20)
+                        .padding(.top, 8)
 
-                        // Path Map
-                        if !trip.path.isEmpty || (trip.startLatitude != nil && trip.endLatitude != nil) {
-                            pathMap
-                                .frame(height: 180)
-                                .cornerRadius(24)
-                                .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.06), lineWidth: 1))
-                                .padding(.horizontal, 20)
-                        }
+                        // All info in one card
+                        VStack(spacing: 0) {
 
-                        // Timeline Card
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("JOURNEY")
-                                .font(.system(size: 10, weight: .black))
-                                .kerning(1.5)
-                                .foregroundColor(.white.opacity(0.4))
-                                .padding(.leading, 4)
+                            // From / To compact timeline
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(spacing: 0) {
+                                    Circle().fill(accent).frame(width: 8, height: 8).padding(.top, 5)
+                                    Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1).frame(maxHeight: .infinity)
+                                    Circle().fill(Color.white.opacity(0.3)).frame(width: 8, height: 8).padding(.bottom, 5)
+                                }
+                                .frame(width: 8)
 
-                            VStack(spacing: 0) {
-                                // Boarded
-                                timelineRow(
-                                    icon: "arrow.up.right.circle.fill",
-                                    iconColor: accent,
-                                    label: "Boarded",
-                                    stop: trip.startStopName ?? trip.startStopCode ?? (trip.source == "sms" ? "Via SMS" : "Unknown"),
-                                    time: trip.startTime
-                                )
+                                VStack(alignment: .leading, spacing: 0) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text("FROM").font(.system(size: 9, weight: .black)).kerning(1).foregroundColor(.white.opacity(0.3))
+                                            Text(trip.startStopName ?? trip.startStopCode ?? (trip.source == "sms" ? "Via SMS" : "Unknown"))
+                                                .font(.system(size: 15, weight: .bold)).foregroundColor(.white).lineLimit(1)
+                                        }
+                                        Spacer()
+                                        Text(trip.startTime.formatted(date: .omitted, time: .shortened))
+                                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                            .foregroundColor(.white.opacity(0.5))
+                                    }
+                                    .padding(.bottom, 10)
 
-                                // Connecting line
-                                HStack(spacing: 0) {
-                                    VStack(spacing: 4) {
-                                        ForEach(0..<3) { _ in
-                                            Circle()
-                                                .fill(accent.opacity(0.3))
-                                                .frame(width: 3, height: 3)
+                                    if let d = trip.durationMinutes {
+                                        Text("\(d) min")
+                                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                            .foregroundColor(.white.opacity(0.2))
+                                            .padding(.bottom, 10)
+                                    }
+
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text("TO").font(.system(size: 9, weight: .black)).kerning(1).foregroundColor(.white.opacity(0.3))
+                                            Text(trip.endStopName ?? trip.endStopCode ?? (trip.endTime == nil ? "Ongoing" : "Unknown"))
+                                                .font(.system(size: 15, weight: .bold))
+                                                .foregroundColor(trip.endTime == nil ? .white.opacity(0.4) : .white)
+                                                .lineLimit(1)
+                                        }
+                                        Spacer()
+                                        if let end = trip.endTime {
+                                            Text(end.formatted(date: .omitted, time: .shortened))
+                                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                                .foregroundColor(.white.opacity(0.5))
                                         }
                                     }
-                                    .frame(width: 32)
-                                    
-                                    if let d = trip.durationMinutes {
-                                        Text("\(d) minute trip")
-                                            .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                            .foregroundColor(.white.opacity(0.25))
-                                            .padding(.leading, 12)
-                                    }
+                                }
+                            }
+                            .padding(16)
+
+                            Divider().background(Color.white.opacity(0.06))
+
+                            // Stats strip
+                            HStack(spacing: 0) {
+                                compactStat(label: "DATE",     value: trip.startTime.formatted(.dateTime.day().month()))
+                                Divider().background(Color.white.opacity(0.06)).frame(height: 32)
+                                compactStat(label: "DURATION", value: durationText)
+                                Divider().background(Color.white.opacity(0.06)).frame(height: 32)
+                                compactStat(label: "SOURCE",   value: trip.source == "sms" ? "SMS" : "App")
+                                Divider().background(Color.white.opacity(0.06)).frame(height: 32)
+                                compactStat(label: "SYNC",     value: trip.isSynced ? "✓" : "Pending")
+                            }
+                            .padding(.vertical, 12)
+
+                            if let vehicle = trip.vehicle, !vehicle.isEmpty {
+                                Divider().background(Color.white.opacity(0.06))
+                                HStack {
+                                    Image(systemName: "bus.fill").font(.system(size: 12)).foregroundColor(accent.opacity(0.7))
+                                    Text("Vehicle").font(.system(size: 13)).foregroundColor(.white.opacity(0.5))
+                                    Spacer()
+                                    Text(vehicle).font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
+                                }
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                            }
+
+                            if let notes = trip.notes, !notes.isEmpty {
+                                Divider().background(Color.white.opacity(0.06))
+                                HStack(alignment: .top) {
+                                    Image(systemName: "note.text").font(.system(size: 12)).foregroundColor(accent.opacity(0.7))
+                                    Text(notes).font(.system(size: 13)).foregroundColor(.white.opacity(0.8)).lineSpacing(3)
                                     Spacer()
                                 }
-                                .padding(.vertical, 4)
-
-                                // Exited
-                                timelineRow(
-                                    icon: "arrow.down.right.circle.fill",
-                                    iconColor: .white.opacity(0.2),
-                                    label: "Exited",
-                                    stop: trip.endStopName ?? trip.endStopCode ?? "Ongoing / Unknown",
-                                    time: trip.endTime
-                                )
+                                .padding(.horizontal, 16).padding(.vertical, 10)
                             }
-                            .padding(20)
-                            .background(Color.white.opacity(0.03))
-                            .cornerRadius(24)
-                            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.06), lineWidth: 1))
                         }
+                        .background(Color.white.opacity(0.03))
+                        .cornerRadius(20)
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.06), lineWidth: 1))
 
-                        // Stats Grid
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                            statBox(value: durationText, label: "DURATION", icon: "clock.fill")
-                            statBox(value: trip.startTime.formatted(.dateTime.day().month()), label: "DATE", icon: "calendar")
-                            statBox(value: trip.startTime.formatted(.dateTime.hour().minute()), label: "TIME", icon: "timer")
-                        }
-
-                        // Details List
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("DETAILS")
-                                .font(.system(size: 10, weight: .black))
-                                .kerning(1.5)
-                                .foregroundColor(.white.opacity(0.4))
-                                .padding(.leading, 4)
-
-                            VStack(spacing: 0) {
-                                metaRow(icon: "antenna.radiowaves.left.and.right", label: "Source", value: trip.source == "sms" ? "SMS Sync" : "App Native")
-                                Divider().background(Color.white.opacity(0.06))
-                                metaRow(
-                                    icon: trip.isSynced ? "checkmark.circle.fill" : "arrow.clockwise.circle.fill",
-                                    label: "Cloud Sync",
-                                    value: trip.isSynced ? "Verified" : "Pending"
-                                )
-                                
-                                if let vehicle = trip.vehicle, !vehicle.isEmpty {
-                                    Divider().background(Color.white.opacity(0.06))
-                                    metaRow(icon: "bus.fill", label: "Vehicle", value: vehicle)
-                                }
-                                
-                                if let notes = trip.notes, !notes.isEmpty {
-                                    Divider().background(Color.white.opacity(0.06))
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        HStack {
-                                            Image(systemName: "note.text")
-                                                .font(.system(size: 14))
-                                                .foregroundColor(accent)
-                                            Text("Notes")
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.white.opacity(0.6))
-                                            Spacer()
-                                        }
-                                        Text(notes)
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.white)
-                                            .lineSpacing(4)
-                                    }
-                                    .padding(16)
-                                }
-                            }
-                            .background(Color.white.opacity(0.03))
-                            .cornerRadius(24)
-                            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.white.opacity(0.06), lineWidth: 1))
+                        // Path Map (if available)
+                        if !trip.path.isEmpty || (trip.startLatitude != nil && trip.endLatitude != nil) {
+                            pathMap
+                                .frame(height: 160)
+                                .cornerRadius(20)
+                                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.06), lineWidth: 1))
                         }
                     }
                     .padding(.horizontal, 20)
@@ -209,6 +187,18 @@ struct TripDetailView: View {
     }
 
     // MARK: - Helpers
+
+    private func compactStat(label: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(label)
+                .font(.system(size: 8, weight: .black)).kerning(1)
+                .foregroundColor(.white.opacity(0.3))
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundColor(.white)
+        }
+        .frame(maxWidth: .infinity)
+    }
 
     private func timelineRow(icon: String, iconColor: Color, label: String, stop: String, time: Date?) -> some View {
         HStack(spacing: 14) {
