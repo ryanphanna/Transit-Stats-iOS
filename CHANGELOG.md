@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Changed
+- **Navigation restructure**: Tabs are now Trips | Explore | Stats (was Home | Trips | Stats). Added a persistent floating "GO" pill button above the tab bar that opens the trip logger from any tab.
+
+### Changed
 - **HomeView: Ready state panel**: Replaced the minimal "Ready to go?" + single button layout with a richer panel showing a quick stats strip (total trips / this week / last trip), the Start New Trip button, quick-start shortcuts for frequent routes, and a compact recent trips list.
 - **TripRow: Stop name truncation**: Changed FROM → TO from a single truncated HStack to a vertical stack (origin on line 1, destination indented below with a down arrow), so full stop names are readable without ellipsis.
 - **TripDetailView: Source/sync moved to footer**: Removed SOURCE and SYNC from the prominent stats strip (which now shows DATE and DURATION only). Source and sync status now appear as small-print text at the bottom of the info card ("Logged via App · Synced").
