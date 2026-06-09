@@ -46,6 +46,11 @@ struct StatsView: View {
         Set(trips.map { $0.route }.filter { !$0.isEmpty }).count
     }
 
+    private var uniqueDays: Int {
+        let calendar = Calendar.current
+        return Set(trips.map { calendar.startOfDay(for: $0.startTime) }).count
+    }
+
     private var uniqueStops: Int {
         let starts = trips.compactMap { $0.startStopName ?? $0.startStopCode }
         let ends = trips.compactMap { $0.endStopName ?? $0.endStopCode }
@@ -400,7 +405,7 @@ struct StatsView: View {
             HStack(spacing: 0) {
                 miniPassportStat(label: "ROUTES", value: "\(uniqueRoutes)")
                 miniPassportStat(label: "STOPS", value: "\(uniqueStops)")
-                miniPassportStat(label: "STREAK", value: "\(currentStreak)d")
+                miniPassportStat(label: "DAYS", value: "\(uniqueDays)")
             }
             
             // Identity row (merged from separate card)
