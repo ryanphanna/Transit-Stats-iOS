@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-08
+
 ### Changed
 - **Architectural Overhaul (MVVM)**: Implemented Model-View-ViewModel architecture across all core views (`HomeView`, `AddTripView`, `StatsView`). Extracted massive amounts of business logic, state management, and analytical calculations into dedicated ViewModels, reducing view file sizes by ~30-50%.
 - **Decomposed TransitStatsAPI**: Broke down the "God Class" `TransitStatsAPI` into specialized, decoupled services:
@@ -37,12 +39,3 @@ All notable changes to this project will be documented in this file.
 - **SettingsView: Home Agency placement**: Moved "Home Agency" from the App Info section into the Theme section, where it belongs contextually (it drives the Auto accent mode).
 - **HomeView: Default panel height**: Increased default snap height from 300 → 380 pts (roughly half screen) for a more useful initial view.
 - **HomeView: In Transit badge**: Changed the "In Transit" live-status badge to use a fixed green colour instead of the accent, so it reads as a live/active indicator regardless of the user's chosen theme.
-
-### Fixed
-- **Home panel content layout**: Panel content was being pushed to the bottom because `Color.clear` with `minHeight` expands to fill all available space. Fixed by locking the drag handle to an exact 48pt height.
-- **Locate button broken**: Button did nothing when GPS hadn't resolved yet. Restored fallback to MapKit's native user-location tracking when `lastLocation` is nil.
-- **Home panel drag**: Drag handle is now a 48px tall hit target (was ~24px), making it reliably swipeable to expand/collapse the panel.
-- **Map camera on load**: Map no longer zooms out to fit all historical trip markers across the GTA. Now centers on the user's GPS location at a neighbourhood-level zoom; falls back to top-10 most-visited hubs only if location is unavailable.
-- **Map camera jumping**: Removed the `onChange(of: mapMarkers.count)` handler that was re-fitting the map camera every time a marker loaded, causing the map to snap around unexpectedly.
-- **Locate button**: No longer falls back to a city-wide "fit all markers" view when GPS hasn't resolved yet. Button only zooms if a location is available.
-- **AddTripView double drag indicator**: Removed system sheet drag indicator (`.presentationDragIndicator(.visible)`) since AddTripView renders its own capsule handle.
