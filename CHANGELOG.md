@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 - **Linked trips / Journey view**: `TripRecord` now stores `journeyId` (synced from Firestore). In the Trips list, trips sharing a journey are connected with a vertical line and a link badge. In TripDetailView, a Journey section shows the other legs with route, stop, and duration — plus an Unlink button that clears the `journeyId` locally and in Firestore.
 
 ### Changed
-- **Navigation restructure**: Tabs are now Trips | Explore | Stats (was Home | Trips | Stats). Added a persistent floating "GO" pill button above the tab bar that opens the trip logger from any tab.
+- **Liquid Glass Navigation**: Replaced the system tab bar with a custom "Liquid Glass" style floating capsule bar. The "GO" button is now integrated directly into the bar, positioned horizontally between the Explore and Stats tabs for a sleeker, more unified look.
 
 ### Changed
 - **HomeView: Ready state panel**: Replaced the minimal "Ready to go?" + single button layout with a richer panel showing a quick stats strip (total trips / this week / last trip), the Start New Trip button, quick-start shortcuts for frequent routes, and a compact recent trips list.
