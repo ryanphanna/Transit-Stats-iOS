@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.3.0] - 2026-06-08
+## [Unreleased]
 
 ### Changed
 - **Architectural Overhaul (MVVM)**: Implemented Model-View-ViewModel architecture across all core views (`HomeView`, `AddTripView`, `StatsView`). Extracted massive amounts of business logic, state management, and analytical calculations into dedicated ViewModels, reducing view file sizes by ~30-50%.
@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
     - `AuthService`: Dedicated to OTP flows and Firebase session management.
     - `TripService`: Specialized Firestore CRUD operations and backend command processing.
     - `SyncManager`: Isolated real-time synchronization and SwiftData reconciliation logic.
+- **Liquid Glass Navigation**: Replaced the system tab bar with a custom "Liquid Glass" style floating capsule bar. The "GO" button is now integrated directly into the bar, positioned horizontally between the Explore and Stats tabs for a sleeker, more unified look.
 - **Project Directory Restructuring**: Reorganized the entire codebase into a logical folder hierarchy (`Models`, `Views`, `ViewModels`, `Services`, `Utilities`, `Resources`) for improved maintainability and discovery.
 - **View Componentization**: Decomposed massive view files (`HomeView`, `StatsView`) into modular, reusable components. Extracted ~10 subviews into dedicated files under `Views/Components/`, reducing main view file sizes by ~80% and improving UI testing isolation.
 
@@ -18,9 +19,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Linked trips / Journey view**: `TripRecord` now stores `journeyId` (synced from Firestore). In the Trips list, trips sharing a journey are connected with a vertical line and a link badge. In TripDetailView, a Journey section shows the other legs with route, stop, and duration — plus an Unlink button that clears the `journeyId` locally and in Firestore.
-
-### Changed
-- **Liquid Glass Navigation**: Replaced the system tab bar with a custom "Liquid Glass" style floating capsule bar. The "GO" button is now integrated directly into the bar, positioned horizontally between the Explore and Stats tabs for a sleeker, more unified look.
 
 ### Changed
 - **HomeView: Ready state panel**: Replaced the minimal "Ready to go?" + single button layout with a richer panel showing a quick stats strip (total trips / this week / last trip), the Start New Trip button, quick-start shortcuts for frequent routes, and a compact recent trips list.
@@ -48,122 +46,3 @@ All notable changes to this project will be documented in this file.
 - **Map camera jumping**: Removed the `onChange(of: mapMarkers.count)` handler that was re-fitting the map camera every time a marker loaded, causing the map to snap around unexpectedly.
 - **Locate button**: No longer falls back to a city-wide "fit all markers" view when GPS hasn't resolved yet. Button only zooms if a location is available.
 - **AddTripView double drag indicator**: Removed system sheet drag indicator (`.presentationDragIndicator(.visible)`) since AddTripView renders its own capsule handle.
-- **AddTripView confusing flow**: Removed "Arrival logged at X" timestamp label. Stop field is now optional — "Continue" is always enabled. Removed "Skip — I'm already on board" button; leaving the stop blank achieves the same result more clearly.
-- **Settings display name**: No longer shows the email prefix (e.g. "rhanna") as the user's name. Defaults to "Transit Rider" with an inline Edit button to set a local display name saved to UserDefaults.
-- **Settings Home Agency**: Moved from a standalone "Preferences" section into App Info.
-- **Build errors from Gemini refactor**: Fixed `CGFloat / Int` ambiguity in StatsView and TripsHistoryView, and resolved "compiler unable to type-check" error in StatsView by extracting `body` into `passportPanel`, `panelHeader`, `panelScrollContent`, and section-level `@ViewBuilder` helpers.
-
-### Added
-- **Passport Tab UI**: Completely refactored the Stats tab into a premium 'Passport' experience, inspired by Flighty. Features an interactive map background with translucent journey paths, a draggable data panel, and a high-fidelity 'Transit Pass' hero card with holographic shimmer.
-- **Enhanced Trip History Rows**: Updated trip rows to show both the logging source (App vs SMS) and a clear 'Verified' status seal simultaneously, providing better data provenance at a glance.
-- **Integrated Year Picker**: Relocated the stats year filter into the panel as horizontal capsules for a faster, more native interaction model.
-- **Trip Deletion**: Added support for deleting trips directly from the history tab. Users can now use a 'swipe-to-delete' gesture or a long-press context menu to remove incorrect entries.
-- **Map Heatmap Visualization**: Replaced numbered map markers with a clean heatmap system. Hubs now use color opacity and subtle scaling to indicate trip frequency. Removed text labels for a minimalist, immersive map experience.
-- **Trip Path Visualization**: Integrated a mini-map into the Trip Detail view that visualizes your journey. If high-fidelity tracking was enabled, it displays the full 'breadcrumb' path as a polyline; otherwise, it shows markers for your boarding and exiting points.
-- **Enhanced 'Locate Me' Zoom**: Increased the zoom level of the 'Locate' button to a street-level focus (~200m radius), making it easier to see exactly where you are relative to nearby stops.
-- **One-Tap 'Locate' in Logger**: Added a dedicated Locate button to the boarding logger (`AddTripView`). Tapping it instantly scans for nearby transit stops and surfaces them as one-tap chips.
-- **Final Design Polish & Branding**: Standardized the entire app's color palette (Deep Navy, Brand Blue) and updated the `LoginView` to match the premium dark theme.
-- **Responsive Home Panel**: Refactored the bottom panel on the Home screen to use a dedicated drag zone at the top. This eliminates gesture conflicts with the internal scroll view, making swiping much smoother.
-- **Medium-Detent Sheets**: Updated the "Add Trip" and "Settings" screens to open as non-full-screen sheets (medium detent) by default.
-- **Dynamic Agency Stats**: The Agencies section on the Stats page now respects the year filter and is limited to your Top 5 most-used agencies.
-- **Centralized App Constants**: Moved app version, support email, and platform name to `AppEnvironment` for single-point management.
-- **Theme Color System**: Created `Color+Theme.swift` to centralize brand colors and eliminate hardcoded hex strings.
-
-### Fixed
-- **Terminology Update**: Replaced all instances of "Alighted" with "Exited" throughout the app for better localization in the Canadian transit context.
-- **Settings UI Polishing**: Improved the clarity of the Theme section by adding an explanation for 'Auto' mode. Simplified the Plan section by removing redundant status badges.
-- **Background Synchronization**: Unified the background colors across all main views. The Home panel and "Add Trip" sheet now use the same solid `appBackground` (Deep Navy) as the rest of the app.
-- **Home Panel Clipping**: Fixed an issue where the "COMPLETE JOURNEY" and "START NEW TRIP" buttons were partially obscured by the system tab bar. Increased the panel's bottom padding and adjusted snap heights.
-- **Rank Terminology**: Updated the top-tier user rank from "System Master" to "System Elite" for more professional terminology.
-
-### Refactored
-- **Modular View Architecture**: Split the monolithic `ContentView.swift` (1000+ lines) into focused, maintainable files: `LoginView`, `MainTabView`, `TripsHistoryView`, `TripRow`, `TripDetailView`, and `SettingsView`.
-- **Dynamic Versioning**: UI now automatically pulls the marketing version from the app Bundle.
-
-## [1.2.0] - 2026-06-07
-
-### Added
-- **Trip Detail View**: Tapping any trip in history opens a full detail sheet — large route badge, boarded/alighted timeline with stop names and times, duration/date/time stat pills, source, sync status, vehicle, and notes.
-- **Profile Picture**: Users can set a profile photo via the photo library. Photo is stored locally on-device (no upload). Appears on the transit card (tap to change) and in the Settings account row.
-- **Activity Heatmap**: Stats tab now shows a GitHub-style scrollable year heatmap. Each square is one day; colour intensity scales from 1 trip (faint) to 10+ trips (full accent). Computed on-device from local trip history — no network call.
-- **Home Agency on Transit Card**: Stats card now shows your most-used agency as a badge in the top-right corner of the transit card.
-- **Contact Us**: Settings now includes a Support section with a Contact Us link that opens Mail pre-addressed to hey@ryanisnota.pro with version number and short account ID in the subject line.
-
-### Fixed
-- **Start Trip button**: Tapping "Start New Trip" now correctly opens the trip logger. Previously the button was inside a sheet presenting another sheet, which iOS silently ignores.
-- **Settings button**: Same root cause as above — now works correctly.
-- **Tab bar hidden by panel**: Home screen panel is now a ZStack overlay (like Flighty) instead of a system sheet, so the tab bar stays fully visible at all times.
-- **Compass behind status bar**: Compass is now positioned above the locate button in the bottom-right corner instead of the top-right where it overlapped the battery indicator.
-- **Locate button zoom**: Tapping locate now zooms to street level (~400m radius) instead of city-wide.
-- **App display name**: App now shows as "Transit Stats" on the home screen instead of "Transit Stats iOS".
-- **Xcode warnings**: Eliminated `?? NSNull()` nil-coalescing warnings in `TransitStatsAPI.swift` by routing optional Firestore fields through a typed `nullable<T>` helper.
-
-### Refactored
-- **AppEnvironment**: Accent colour and home agency are now managed in a single `AppEnvironment` object injected at the root, eliminating duplicated `@AppStorage`/`topAgency`/`accent` declarations across five views.
-
-### Fixed
-- **Ghost Active Trip**: Active trip query now filters to `isSynced == false` only, preventing historical open SMS trips synced from Firestore from appearing as "In Transit" on the home screen. Discarding a trip no longer surfaces the next open trip from history.
-
-### Changed
-- **Trip Filters**: Trips history now has four filter rows — date range (All time / This week / This month / This year), source (All / App / SMS), and agency chips (one per agency in your history). All filters combine.
-- **Onboarding Flow**: Login screen is now a two-stage flow — a full landing screen showing app features ("Get Started" button) slides into the phone number entry form with a spring transition. Back button returns to landing.
-- **SMS Resend Cooldown**: After requesting a code, "Resend Code" is disabled for 60 seconds with a live countdown to prevent SMS spam.
-- **Streak Tracking**: Stats screen now shows current commute streak and all-time best streak, calculated from consecutive days with completed trips.
-- **Map Stop Fallback**: Home map now shows markers for trips that have no GPS data by looking up stop coordinates from the local stops library. SMS-logged trips with known stop names/codes will now appear on the map.
-- **App Theme**: Added colour theme picker to Settings. Choose Blue, Indigo, Purple, Teal, Green, Red, or Auto (derives colour from your most-used transit agency). Accent colour propagates to badges, buttons, charts, and map markers across the whole app.
-- **Draggable Home Panel**: Bottom panel is now a proper draggable sheet with three snap heights (compact, default, expanded) and spring snap-back animation.
-- **Map Controls**: Added locate me and compass buttons to the map via native MapKit controls.
-- **Removed Shortcuts Section**: Removed the Recent Shortcuts panel from the home screen.
-- **Blue Accent**: Replaced all orange accent colours with blue throughout HomeView and AddTripView.
-- **Trip History**: SMS-sourced trips with no stop name now display "Via SMS" instead of "Unknown origin" in trip history.
-- **Panel Layout**: Removed nested card background from active trip and ready state cards — content now sits directly on the frosted glass panel.
-
-## [1.1.0] - 2026-06-05
-
-### Added
-- **Stop Auto-Suggestions**: Implemented real-time stop suggestions in the boarding logger (`AddTripView`). When typing, suggestions are pulled from trip history (ranked by recency) and the local stop library (ranked by verified status), displayed in a dropdown-style vertical stack.
-
-### Changed
-- **Inline Directions**: Relocated direction prediction chips from the advanced details block to display inline directly below route input suggestions when a route is selected or typed.
-- **Simplified Advanced Options**: Renamed the advanced options panel to "Add Agency" and removed the direction selector, keeping only the agency selector.
-
-
-## [1.0.0] - 2026-06-03
-
-### Changed
-- **Premium UI Redesign**: Overhauled the entire app interface to achieve a cohesive, high-end "in-between" aesthetic (blending Transit App's bold clarity with Flighty's elegance).
-- **Unified Visual Identity**: Standardized the deep navy background across all tabs and replaced default iOS lists with custom, card-based ScrollViews for a modern look.
-- **Streamlined Add Trip Flow**: Redesigned the boarding step to focus on route entry and prediction chips, hiding secondary agency/direction selectors behind an advanced toggle to reduce form overload.
-- **Polished Boarding Pass Aesthetic**: Refined the Home screen's active trip card with better font weights and a cleaner Origin-to-Destination timeline.
-- **Improved Sheet Navigation**: Added explicit "Done" buttons to the Settings and Profile sheets for clearer dismissal.
-- **Enhanced Privacy Display**: Replaced raw, confusing user IDs in Settings with masked "Account ID" strings.
-- **Consistent Terminology**: Renamed "Analytics" to "Stats" throughout the app for consistent branding.
-
-### Added
-- **High-Fidelity Path Tracking (Admin Only)**: Implemented background GPS 'breadcrumb' tracking for active trips. When enabled via the new "Lab Features" setting, the app records a continuous path of coordinates and speed data. This enables high-precision distance and speed analytics while preserving battery for regular users via a passive-only default mode.
-- **Full Offline Mirroring**: Implemented comprehensive offline caching for user profiles, station hubs, and prediction accuracy stats. The app now persists your preferred agency, canonical station names, and AI performance metrics locally, ensuring a fully personalized experience even without a network connection.
-- **Transit Card Profile**: Implemented a premium "Transit Card" feature, inspired by Flighty's Passport. The profile now features a holographic digital card summarizing the user's transit career, including unique stats, top route badges, and dynamic rank titles (e.g., "System Master").
-- **On-Device OCR "Scan to Start"**: Integrated the Vision framework to allow users to scan bus poles, stop signs, or vehicle numbers via the camera. The app automatically extracts route numbers and stop names, pre-filling the logger for a high-speed, zero-typing entry experience.
-- **Strictly Normalized Hub Model**: Refactored the app to follow a strictly normalized data architecture. Trips now link exclusively to Stops (via names/codes), and Hub resolution is performed dynamically via the local Stops library. Removed denormalized `startHubId` and `endHubId` fields from the trip model.
-- **Hub-Based Stop Suggestions**: Refactored the `AddTripView` logger to group individual boarding platforms into consolidated "Hubs." Users now see a single, verified chip for an intersection (e.g., Spadina / Dundas) instead of multiple scattered suggestions, significantly reducing UI clutter.
-- **Database-Driven Hub Model**: Updated the iOS `Stop` model and sync engine to support the new Firestore `hubId` and `verified` flags, enabling high-confidence matching and verified stop seals.
-- **GPS Data Quality Filtering**: Updated the location capture engine to automatically discard coordinates with poor horizontal accuracy (> 65m). This prevents "noisy" data from subways or tunnels from skewing your trip history and ensures the normalized stops library remains high-quality.
-- **Background GPS Validation**: Implemented silent GPS quality filtering for the HomeView map visualization.
-- **Optimized Data Sync Strategy**: Implemented "Initial Hydration" and incremental syncing. Power users now see their most recent 50 trips instantly, while the rest of their history backfills in the background. Subsequent launches only sync delta changes, significantly reducing battery and data usage.
-- **Intelligent Direction Suggestions**: Enhanced `AddTripView` to automatically predict and suggest journey directions based on historical patterns, further reducing manual input.
-- **Polished Map Hubs**: Added visual refinements to the HomeView map, including scaled hub markers (based on frequency), pulsing active trip animations, and smart auto-framing of the camera view.
-- **Dynamic Timezone Support**: Updated `TripRecord` to automatically detect and use the device's current timezone, ensuring accurate local-time logging and backend analytics regardless of location.
-- **Nearby Stop Suggestions**: Integrated GPS-based stop lookup in `AddTripView`, surfacing the 5 nearest stops from the normalized library for one-tap selection.
-- **Stop Library Sync**: Added automatic synchronization of the normalized Firestore `stops` collection to local SwiftData storage.
-- **Boarding Hub Map Clustering**: Refactored the HomeView map to show consolidated "Hubs" for frequent boarding stops. Each hub displays a trip count badge, providing a cleaner and more data-driven visualization of transit usage.
-- **Interactive Trip Map**: Enhanced the HomeView map to display markers for recent trip start and end points, providing immediate visual feedback for collected GPS data.
-- **On-Device Prediction Engine**: Ported the heuristic weighted-voting engine to Swift for offline route suggestions and intelligent shortcut ranking.
-- **GPS Location Tracking**: Integrated `CoreLocation` to automatically capture latitude and longitude for trip start and end points.
-- **Offline-First Trip Logging**: Refactored `AddTripView` and `HomeView` to persist trips locally to SwiftData immediately, removing network dependency for starting/ending trips.
-- **Direct Firestore Sync**: Implemented direct-to-Firestore write capability in `TransitStatsAPI.swift` for completed trips, bypassing legacy HTTP API for app-initiated actions.
-- **Network Resilience Engine**: Added `NetworkMonitor` to detect connectivity changes and `SyncManager.syncPendingTrips` to automatically flush offline data when online.
-- **Local Shortcuts**: Refactored HomeView shortcuts to use local-first architecture for instant logging in low-connectivity areas.
-- **iOS Companion App**: Created the SwiftUI core app scaffold with SwiftData persistence for offline logging and local trip storage.
-- **Real-Time Sync Engine** (`TransitStatsAPI.swift`): Integrates Firestore snapshots listener to synchronize database trip documents with the local SwiftData store automatically.
-- **Dashboard, Logger, and Analytics Views** (`HomeView.swift`, `AddTripView.swift`, `StatsView.swift`): Implemented premium SwiftUI interfaces for active trip status logging, structured manual entry form, and Swift Charts metrics visualization.
-- **Firebase iOS SDK**: Integrated `FirebaseCore`, `FirebaseAuth`, and `FirebaseFirestore` via Swift Package Manager to support user authentication and real-time database sync.
