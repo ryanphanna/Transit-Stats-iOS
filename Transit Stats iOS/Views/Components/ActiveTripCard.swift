@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 struct ActiveTripCard: View {
     let trip: TripRecord

@@ -2,6 +2,7 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 import SwiftData
+import Combine
 
 @MainActor
 class TripService: ObservableObject {

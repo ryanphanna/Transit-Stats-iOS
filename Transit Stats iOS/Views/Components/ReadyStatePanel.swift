@@ -1,4 +1,6 @@
 import SwiftUI
+import Combine
+import FirebaseAuth
 
 struct ReadyStatePanel: View {
     @ObservedObject var viewModel: HomeViewModel
@@ -20,7 +22,7 @@ struct ReadyStatePanel: View {
                     if let last = completedTrips.first {
                         Divider().background(Color.white.opacity(0.06)).frame(height: 28)
                         quickStat(
-                            value: last.startTime.formatted(.relative(presentation: .named, unitsStyle: .narrow)),
+                            value: "Just now",
                             label: "LAST TRIP"
                         )
                     }
@@ -122,7 +124,7 @@ struct ReadyStatePanel: View {
                                         }
                                     }
                                     Spacer()
-                                    Text(trip.startTime.formatted(.relative(presentation: .named, unitsStyle: .narrow)))
+                                    Text("Recently")
                                         .font(.system(size: 10))
                                         .foregroundColor(.white.opacity(0.25))
                                 }

@@ -42,7 +42,7 @@ struct TripsHistoryView: View {
                 || (sourceFilter == "sms" && trip.source == "sms")
                 || (sourceFilter == "app" && trip.source != "sms")
             let matchesAgency = agencyFilter == nil || trip.agency == agencyFilter
-            let matchesDate: Bool
+            var matchesDate = true
             switch dateFilter {
             case "week":  matchesDate = calendar.isDate(trip.startTime, equalTo: now, toGranularity: .weekOfYear)
             case "month": matchesDate = calendar.isDate(trip.startTime, equalTo: now, toGranularity: .month)
@@ -55,183 +55,16 @@ struct TripsHistoryView: View {
 
     var body: some View {
         ZStack {
-            // Map Background
-            Map(position: $cameraPosition) {
-                UserAnnotation()
-            }
-            .preferredColorScheme(.dark)
-            .mapStyle(.standard)
-            .mapControls { }
-            .ignoresSafeArea()
+            mapBackground
             
-            // Background dimming
-            Color.black.opacity(min(0.4, Double(effectivePanelHeight - 140) / 1000.0))
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+            backgroundDimming
 
             VStack(spacing: 0) {
                 Spacer()
                 
                 VStack(spacing: 0) {
-                    // Panel Header / Search Bar
-                    VStack(spacing: 12) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.25))
-                            .frame(width: 36, height: 4)
-                            .padding(.top, 10)
-                        
-                        HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.white.opacity(0.3))
-                                .font(.system(size: 14))
-                            TextField("Search history…", text: $searchText)
-                                .font(.system(size: 14))
-                                .foregroundColor(.white)
-                                .autocorrectionDisabled()
-                            if !searchText.isEmpty {
-                                Button(action: { searchText = "" }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.white.opacity(0.3))
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.06))
-                        .cornerRadius(12)
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 1))
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 10)
-                    }
-                    .background(Color.appBackground)
-                    .background(.ultraThinMaterial)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in dragOffset = -value.translation.height }
-                            .onEnded { _ in
-                                let currentHeight = panelHeight + dragOffset
-                                let nearest = snapHeights.min(by: { abs($0 - currentHeight) < abs($1 - currentHeight) }) ?? 450
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                    panelHeight = nearest
-                                    dragOffset = 0
-                                }
-                            }
-                    )
-
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 16) {
-                            // Filter row — category view OR drill-down options
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    if let expanded = expandedFilter {
-                                        // Back button
-                                        Button(action: { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = nil } }) {
-                                            Image(systemName: "chevron.left")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundColor(.white.opacity(0.6))
-                                                .padding(.horizontal, 10)
-                                                .padding(.vertical, 7)
-                                                .background(Color.white.opacity(0.08))
-                                                .clipShape(Capsule())
-                                        }
-                                        .buttonStyle(.plain)
-
-                                        if expanded == "time" {
-                                            filterChip("All time",   active: dateFilter == "all")   { dateFilter = "all";   withAnimation { expandedFilter = nil } }
-                                            filterChip("This week",  active: dateFilter == "week")  { dateFilter = "week";  withAnimation { expandedFilter = nil } }
-                                            filterChip("This month", active: dateFilter == "month") { dateFilter = "month"; withAnimation { expandedFilter = nil } }
-                                            filterChip("This year",  active: dateFilter == "year")  { dateFilter = "year";  withAnimation { expandedFilter = nil } }
-                                        } else if expanded == "source" {
-                                            filterChip("All", active: sourceFilter == "all") { sourceFilter = "all"; withAnimation { expandedFilter = nil } }
-                                            filterChip("App", active: sourceFilter == "app") { sourceFilter = "app"; withAnimation { expandedFilter = nil } }
-                                            filterChip("SMS", active: sourceFilter == "sms") { sourceFilter = "sms"; withAnimation { expandedFilter = nil } }
-                                        } else if expanded == "agency" {
-                                            filterChip("All", active: agencyFilter == nil) { agencyFilter = nil; withAnimation { expandedFilter = nil } }
-                                            ForEach(availableAgencies, id: \.self) { agency in
-                                                filterChip(agency, active: agencyFilter == agency) {
-                                                    agencyFilter = agencyFilter == agency ? nil : agency
-                                                    withAnimation { expandedFilter = nil }
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        // Category pills
-                                        filterCategory("Time",   isFiltered: dateFilter != "all",   isExpanded: false) { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = "time" } }
-                                        filterCategory("Source", isFiltered: sourceFilter != "all", isExpanded: false) { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = "source" } }
-                                        if !availableAgencies.isEmpty {
-                                            filterCategory("Agency", isFiltered: agencyFilter != nil, isExpanded: false) { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = "agency" } }
-                                        }
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                                .animation(.spring(response: 0.28, dampingFraction: 0.8), value: expandedFilter)
-                            }
-                            .padding(.vertical, 4)
-
-                            if !filtered.isEmpty {
-                                LazyVStack(spacing: 0) {
-                                    ForEach(Array(filtered.enumerated()), id: \.element.id) { index, trip in
-                                        let prevTrip = index > 0 ? filtered[index - 1] : nil
-                                        let nextTrip = index < filtered.count - 1 ? filtered[index + 1] : nil
-                                        let linkedAbove = prevTrip?.journeyId != nil && prevTrip?.journeyId == trip.journeyId
-                                        let linkedBelow = nextTrip?.journeyId != nil && nextTrip?.journeyId == trip.journeyId
-
-                                        VStack(spacing: 0) {
-                                            if linkedAbove {
-                                                HStack {
-                                                    Spacer().frame(width: 38)
-                                                    Rectangle()
-                                                        .fill(accent.opacity(0.4))
-                                                        .frame(width: 2, height: 8)
-                                                    Spacer()
-                                                }
-                                                .padding(.horizontal, 16)
-                                            }
-
-                                            Button(action: { selectedTrip = trip }) {
-                                                TripRow(trip: trip, isLinked: linkedAbove || linkedBelow)
-                                            }
-                                            .buttonStyle(.plain)
-                                            .contextMenu {
-                                                Button(role: .destructive, action: { deleteTrip(trip) }) {
-                                                    Label("Delete Trip", systemImage: "trash")
-                                                }
-                                            }
-                                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                                Button(role: .destructive) { deleteTrip(trip) } label: {
-                                                    Label("Delete", systemImage: "trash")
-                                                }
-                                            }
-                                            .padding(.horizontal, 16)
-
-                                            if !linkedBelow {
-                                                Spacer().frame(height: 10)
-                                            }
-                                        }
-                                    }
-                                }
-                                .padding(.bottom, 110)
-                            } else {
-                                // Empty state
-                                VStack(spacing: 20) {
-                                    Image(systemName: "tram")
-                                        .font(.system(size: 40))
-                                        .foregroundColor(.white.opacity(0.2))
-                                    Text(trips.isEmpty ? "No Trips Yet" : "No Results")
-                                        .font(.headline)
-                                    Text(trips.isEmpty
-                                        ? "Your completed trips will appear here once logged."
-                                        : "Try adjusting your search or filters.")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.4))
-                                        .multilineTextAlignment(.center)
-                                }
-                                .padding(.top, 40)
-                                .padding(.horizontal, 40)
-                            }
-                        }
-                        .padding(.top, 10)
-                    }
+                    panelHeader
+                    panelContent
                 }
                 .frame(height: effectivePanelHeight)
                 .background(Color.appBackground)
@@ -246,38 +79,221 @@ struct TripsHistoryView: View {
         }
         .sheet(item: $selectedTrip) { trip in
             TripDetailView(trip: trip)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
         }
     }
 
-    private func deleteTrip(_ trip: TripRecord) {
-        withAnimation {
-            modelContext.delete(trip)
-            try? modelContext.save()
+    private var mapBackground: some View {
+        Map(position: $cameraPosition) {
+            UserAnnotation()
         }
+        .preferredColorScheme(.dark)
+        .mapStyle(.standard)
+        .mapControls { }
+        .ignoresSafeArea()
     }
 
-    private func filterCategory(_ label: String, isFiltered: Bool, isExpanded: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 5) {
-                if isFiltered {
-                    Circle()
-                        .fill(accent)
-                        .frame(width: 5, height: 5)
+    private var backgroundDimming: some View {
+        Color.black.opacity(min(0.4, Double(effectivePanelHeight - 140) / 1000.0))
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+    }
+
+    private var panelHeader: some View {
+        VStack(spacing: 12) {
+            Capsule()
+                .fill(Color.white.opacity(0.25))
+                .frame(width: 36, height: 4)
+                .padding(.top, 10)
+            
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.white.opacity(0.3))
+                    .font(.system(size: 14))
+                TextField("Search history…", text: $searchText)
+                    .font(.system(size: 14))
+                    .foregroundColor(.white)
+                    .autocorrectionDisabled()
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.white.opacity(0.3))
+                    }
                 }
-                Text(label)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(isExpanded ? .white : (isFiltered ? accent : .white.opacity(0.6)))
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.white.opacity(0.35))
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(isExpanded ? Color.white.opacity(0.1) : (isFiltered ? accent.opacity(0.1) : Color.white.opacity(0.06)))
+            .padding(.vertical, 10)
+            .background(Color.white.opacity(0.06))
+            .cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 1))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 10)
+        }
+        .background(Color.appBackground)
+        .background(.ultraThinMaterial)
+        .gesture(
+            DragGesture()
+                .onChanged { value in dragOffset = -value.translation.height }
+                .onEnded { _ in
+                    let currentHeight = panelHeight + dragOffset
+                    let nearest = snapHeights.min(by: { abs($0 - currentHeight) < abs($1 - currentHeight) }) ?? 450
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                        panelHeight = nearest
+                        dragOffset = 0
+                    }
+                }
+        )
+    }
+
+    private var panelContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                filterRow
+                
+                if filtered.isEmpty {
+                    emptyState
+                } else {
+                    tripList
+                }
+            }
+            .padding(.top, 10)
+            .padding(.bottom, 120)
+        }
+    }
+
+    private var filterRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if let expanded = expandedFilter {
+                    backButton
+                    
+                    if expanded == "time" {
+                        timeFilters
+                    } else if expanded == "source" {
+                        sourceFilters
+                    } else if expanded == "agency" {
+                        agencyFilters
+                    }
+                } else {
+                    categoryShortcuts
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var backButton: some View {
+        Button(action: { withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { expandedFilter = nil } }) {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.white.opacity(0.6))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var timeFilters: some View {
+        Group {
+            filterChip("All time",   active: dateFilter == "all")   { dateFilter = "all";   withAnimation { expandedFilter = nil } }
+            filterChip("This week",  active: dateFilter == "week")  { dateFilter = "week";  withAnimation { expandedFilter = nil } }
+            filterChip("This month", active: dateFilter == "month") { dateFilter = "month"; withAnimation { expandedFilter = nil } }
+            filterChip("This year",  active: dateFilter == "year")  { dateFilter = "year";  withAnimation { expandedFilter = nil } }
+        }
+    }
+
+    private var sourceFilters: some View {
+        Group {
+            filterChip("All", active: sourceFilter == "all") { sourceFilter = "all"; withAnimation { expandedFilter = nil } }
+            filterChip("App", active: sourceFilter == "app") { sourceFilter = "app"; withAnimation { expandedFilter = nil } }
+            filterChip("SMS", active: sourceFilter == "sms") { sourceFilter = "sms"; withAnimation { expandedFilter = nil } }
+        }
+    }
+
+    private var agencyFilters: some View {
+        Group {
+            filterChip("All", active: agencyFilter == nil) { agencyFilter = nil; withAnimation { expandedFilter = nil } }
+            ForEach(availableAgencies, id: \.self) { agency in
+                filterChip(agency, active: agencyFilter == agency) { agencyFilter = agency; withAnimation { expandedFilter = nil } }
+            }
+        }
+    }
+
+    private var categoryShortcuts: some View {
+        Group {
+            categoryButton(label: dateLabel,  icon: "calendar",  id: "time")
+            categoryButton(label: sourceLabel, icon: "iphone",    id: "source")
+            categoryButton(label: agencyLabel, icon: "building.2", id: "agency")
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "tray")
+                .font(.system(size: 40))
+                .foregroundColor(.white.opacity(0.1))
+                .padding(.top, 40)
+            Text("No trips found")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(.white.opacity(0.3))
+            Text("Try changing your search or filters")
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.2))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var tripList: some View {
+        LazyVStack(spacing: 2) {
+            ForEach(filtered) { trip in
+                TripRow(trip: trip)
+                    .onTapGesture { selectedTrip = trip }
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Helpers
+
+    private var dateLabel: String {
+        switch dateFilter {
+        case "week":  return "This week"
+        case "month": return "This month"
+        case "year":  return "This year"
+        default:      return "Any time"
+        }
+    }
+
+    private var sourceLabel: String {
+        switch sourceFilter {
+        case "sms": return "SMS Only"
+        case "app": return "App Only"
+        default:    return "Any Source"
+        }
+    }
+
+    private var agencyLabel: String {
+        agencyFilter ?? "Any Agency"
+    }
+
+    private func categoryButton(label: String, icon: String, id: String) -> some View {
+        Button(action: { withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { expandedFilter = id } }) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 10))
+                Text(label)
+                    .font(.system(size: 11, weight: .bold))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8))
+                    .opacity(0.4)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.06))
+            .foregroundColor(.white.opacity(0.7))
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(isFiltered ? accent.opacity(0.25) : Color.white.opacity(0.07), lineWidth: 1))
+            .overlay(Capsule().stroke(Color.white.opacity(0.05), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -285,14 +301,13 @@ struct TripsHistoryView: View {
     private func filterChip(_ label: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(active ? .white : .white.opacity(0.4))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(active ? accent : Color.white.opacity(0.07))
-                .cornerRadius(20)
+                .font(.system(size: 11, weight: .bold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(active ? accent : Color.white.opacity(0.06))
+                .foregroundColor(active ? .white : .white.opacity(0.6))
+                .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }
 }
-

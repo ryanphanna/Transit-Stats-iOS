@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CoreLocation
 import FirebaseAuth
+import Combine
 
 @MainActor
 class AddTripViewModel: ObservableObject {
@@ -110,15 +111,20 @@ class AddTripViewModel: ObservableObject {
 
     func processCapturedImage(_ image: UIImage) {
         isProcessingOCR = true
-        VisionOCRManager.shared.recognizeTransitInfo(from: image) { routes, stops in
-            self.detectedRoutes = routes
-            self.detectedStops = stops
-            self.isProcessingOCR = false
-            
-            if !routes.isEmpty {
-                self.showingRoutePicker = true
-            } else if !stops.isEmpty {
-                self.showingStopPicker = true
+        VisionOCRManager.shared.processImage(image) { recognizedStrings in
+            Task { @MainActor in
+                let routes = VisionOCRManager.shared.extractRoutes(from: recognizedStrings)
+                let stops = VisionOCRManager.shared.extractStopNames(from: recognizedStrings)
+                self.isProcessingOCR = false
+                
+                self.detectedRoutes = routes
+                self.detectedStops = stops
+                
+                if !routes.isEmpty {
+                    self.showingRoutePicker = true
+                } else if !stops.isEmpty {
+                    self.showingStopPicker = true
+                }
             }
         }
     }

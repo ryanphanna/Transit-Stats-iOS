@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import MapKit
+import Combine
 
 @MainActor
 class StatsViewModel: ObservableObject {
